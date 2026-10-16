@@ -103,13 +103,28 @@ with a familiar workflow, an ER diagram that actually reads well, and SQL writte
 
 ## Getting started
 
-LumeDB is in **alpha**: it is developed and tested on Linux; expect rough edges, and keep backups of anything important. Prebuilt binaries are coming; for now, build from source.
+LumeDB is in **alpha**: it is developed and tested on Linux; expect rough edges, and keep backups of anything important.
 
-### 1. Install Rust
+### Download
+
+Get the latest build from the [**Releases**](https://github.com/ricardoalmira89/lumedb/releases) page:
+
+| Platform | Package |
+|---|---|
+| Windows 10/11 | `lumedb-…-windows-x86_64.zip` — unzip and run `lumedb.exe` |
+| macOS (Apple Silicon / Intel) | `lumedb-…-macos-aarch64.zip` / `lumedb-…-macos-x86_64.zip` |
+| Debian / Ubuntu | `lumedb_…_amd64.deb` — `sudo apt install ./lumedb_…_amd64.deb` |
+| Other Linux | `lumedb-…-linux-x86_64.tar.gz` |
+
+The builds are not signed yet: on macOS, open the app the first time with right-click → **Open**; on Windows, SmartScreen may ask you to confirm with **More info → Run anyway**.
+
+### Build from source
+
+#### 1. Install Rust
 
 Use [rustup](https://rustup.rs) to get the latest stable toolchain.
 
-### 2. Install the system libraries
+#### 2. Install the system libraries
 
 <details>
 <summary>Debian / Ubuntu</summary>
@@ -134,7 +149,7 @@ sudo dnf install gcc pkgconf-pkg-config openssl-devel dbus-devel gtk3-devel libx
 No extra system libraries should be needed, but LumeDB has not been built or tested on these platforms yet. Reports and fixes are very welcome.
 </details>
 
-### 3. Build and run
+#### 3. Build and run
 
 ```sh
 git clone https://github.com/ricardoalmira89/lumedb.git

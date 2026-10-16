@@ -12,6 +12,9 @@ homepage.workspace = true
 name = "lumedb"
 path = "src/main.rs"
 
+[build-dependencies]
+winresource = "0.1"
+
 [dependencies]
 lumedb-core = { path = "../lumedb-core" }
 eframe = "0.29"
@@ -23,3 +26,22 @@ chrono = "0.4"
 rand = "0.8"
 anyhow = "1"
 serde_json = "1"
+
+# `cargo deb` builds the Debian package attached to releases.
+[package.metadata.deb]
+name = "lumedb"
+maintainer = "Ricardo Almira"
+copyright = "2026 Ricardo Almira"
+license-file = ["../../LICENSE-MIT", "0"]
+extended-description = "A fast, native database client for MySQL, PostgreSQL and SQLite: browse, edit, query and model your databases, with ER diagrams and AI-assisted SQL."
+section = "database"
+priority = "optional"
+depends = "$auto"
+assets = [
+    ["target/release/lumedb", "usr/bin/", "755"],
+    ["../../assets/lumedb.desktop", "usr/share/applications/", "644"],
+    ["../../assets/lumedb.svg", "usr/share/icons/hicolor/scalable/apps/", "644"],
+    ["../../assets/lumedb-128.png", "usr/share/icons/hicolor/128x128/apps/lumedb.png", "644"],
+    ["../../assets/lumedb-256.png", "usr/share/icons/hicolor/256x256/apps/lumedb.png", "644"],
+    ["../../README.md", "usr/share/doc/lumedb/", "644"],
+]
