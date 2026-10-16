@@ -1,38 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#1A2150"/>
-      <stop offset="1" stop-color="#3B2A86"/>
-    </linearGradient>
-    <radialGradient id="glow" cx="256" cy="270" r="230" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#FFD36B" stop-opacity="0.95"/>
-      <stop offset="0.5" stop-color="#FFB547" stop-opacity="0.35"/>
-      <stop offset="1" stop-color="#FFB547" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="body" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#FFE7A8"/>
-      <stop offset="0.4" stop-color="#FFFBEF"/>
-      <stop offset="1" stop-color="#FFD98A"/>
-    </linearGradient>
-    <linearGradient id="beam" x1="0" y1="1" x2="0" y2="0">
-      <stop offset="0" stop-color="#FFF4D2" stop-opacity="0.9"/>
-      <stop offset="1" stop-color="#FFF4D2" stop-opacity="0"/>
-    </linearGradient>
-    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="7"/></filter>
-    <clipPath id="tile"><rect x="16" y="16" width="480" height="480" rx="112"/></clipPath>
-    <clipPath id="cyl"><path d="M146 170 L146 352 A110 32 0 0 0 366 352 L366 170 Z"/></clipPath>
-  </defs>
-  <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#bg)"/>
-  <circle cx="256" cy="270" r="230" fill="url(#glow)"/>
-  <g clip-path="url(#tile)"><path d="M156 170 L104 30 L408 30 L356 170 Z" fill="url(#beam)" opacity="0.6" filter="url(#soft)"/></g>
-  <path d="M146 170 L146 352 A110 32 0 0 0 366 352 L366 170 Z" fill="url(#body)"/>
-  <g clip-path="url(#cyl)" fill="none" stroke="#F2A230" stroke-width="9" stroke-linecap="round">
-    <path d="M146 232 A110 32 0 0 0 366 232"/>
-    <path d="M146 292 A110 32 0 0 0 366 292"/>
-  </g>
-  <ellipse cx="256" cy="170" rx="110" ry="32" fill="#FFFFFF"/>
-  <ellipse cx="256" cy="170" rx="110" ry="32" fill="none" stroke="#FFD98A" stroke-width="5"/>
-  <!-- destello -->
-  <path d="M384 92 Q389 117 414 122 Q389 127 384 152 Q379 127 354 122 Q379 117 384 92 Z" fill="#FFFFFF"/>
-  <path d="M110 250 Q112 261 123 263 Q112 265 110 276 Q108 265 97 263 Q108 261 110 250 Z" fill="#FFFFFF" opacity="0.8"/>
+<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFB547"/><stop offset="1" stop-color="#FF7A3D"/></linearGradient>
+<radialGradient id="g" cx="256" cy="210" r="150" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#FFF3D6"/></radialGradient></defs>
+<rect x="16" y="16" width="480" height="480" rx="112" fill="url(#bg)"/>
+<path d="M256 70 C340 70 396 132 396 206 C396 262 362 292 340 322 C328 338 324 352 324 370 L188 370 C188 352 184 338 172 322 C150 292 116 262 116 206 C116 132 172 70 256 70 Z" fill="url(#g)"/>
+<rect x="196" y="384" width="120" height="22" rx="11" fill="#2B2F4A"/><rect x="206" y="414" width="100" height="22" rx="11" fill="#2B2F4A"/><path d="M228 444 L284 444 Q276 466 256 466 Q236 466 228 444Z" fill="#2B2F4A"/>
+<g fill="none" stroke="#FF8A3D" stroke-width="12" stroke-linecap="round">
+<ellipse cx="256" cy="160" rx="62" ry="18"/>
+<path d="M194 160 L194 262 A62 18 0 0 0 318 262 L318 160"/>
+<path d="M194 211 A62 18 0 0 0 318 211"/>
+</g>
 </svg>
