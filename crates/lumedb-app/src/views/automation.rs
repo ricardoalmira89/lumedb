@@ -266,12 +266,9 @@ impl View for AutomationTab {
                     ui.end_row();
                 });
                 ui.label(
-                    RichText::new(trf!(
-                        "Scheduled jobs run while LumeDB is open. For cron: lumedb --run-job \"{name}\"",
-                        name = job.name
-                    ))
-                    .size(11.0)
-                    .color(theme::MUTED),
+                    RichText::new(trf!("Scheduled jobs run while LumeDB is open. For cron: lumedb --run-job \"{name}\"", name = job.name))
+                        .size(11.0)
+                        .color(theme::MUTED),
                 );
                 ui.separator();
                 let mut remove = None;
@@ -298,7 +295,13 @@ impl View for AutomationTab {
                         changed = true;
                     }
                     if ui.button(format!("{}  {}", icon::UPLOAD_SIMPLE, tr("Export"))).clicked() {
-                        job.steps.push(JobStep::Export { connection: first.clone(), database: String::new(), sql: String::new(), path: String::new(), format: "csv".into() });
+                        job.steps.push(JobStep::Export {
+                            connection: first.clone(),
+                            database: String::new(),
+                            sql: String::new(),
+                            path: String::new(),
+                            format: "csv".into(),
+                        });
                         changed = true;
                     }
                 });

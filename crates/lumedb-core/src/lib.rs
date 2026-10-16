@@ -5,8 +5,8 @@ pub mod ai;
 pub mod automation;
 pub mod config;
 pub mod ddl;
-pub mod dump;
 pub mod driver;
+pub mod dump;
 pub mod edit;
 pub mod errors;
 pub mod i18n;
@@ -21,5 +21,5 @@ pub mod transfer;
 
 pub use config::{ConnectionConfig, DbKind};
 pub use driver::{connect, Canceller, Driver, QueryResult, Value};
-pub use meta::{DbObject, ObjectKind};
 pub use i18n::{tr, trc};
+pub use meta::{DbObject, ObjectKind};

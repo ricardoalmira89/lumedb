@@ -7,8 +7,8 @@ pub mod connection;
 pub mod console;
 pub mod designer;
 pub mod er;
-pub mod monitor;
 pub mod model;
+pub mod monitor;
 pub mod objects;
 pub mod query;
 pub mod table;
@@ -76,11 +76,7 @@ impl Cx<'_> {
     }
 
     /// Starts a task on the connection of `loc`; the result arrives at `on_result` with this id.
-    pub fn run<T: Any + Send>(
-        &mut self,
-        loc: &Loc,
-        f: impl FnOnce(&mut dyn Driver, &Progress) -> anyhow::Result<T> + Send + 'static,
-    ) -> u64 {
+    pub fn run<T: Any + Send>(&mut self, loc: &Loc, f: impl FnOnce(&mut dyn Driver, &Progress) -> anyhow::Result<T> + Send + 'static) -> u64 {
         *self.next_id += 1;
         let id = *self.next_id;
         self.requests.push(Request { id, loc: loc.clone(), owner: Owner::View(self.owner), task: boxed(f) });
@@ -88,11 +84,7 @@ impl Cx<'_> {
     }
 
     /// Like `run`, but entering the schema first (USE / search_path).
-    pub fn run_in<T: Any + Send>(
-        &mut self,
-        loc: &Loc,
-        f: impl FnOnce(&mut dyn Driver, &Progress) -> anyhow::Result<T> + Send + 'static,
-    ) -> u64 {
+    pub fn run_in<T: Any + Send>(&mut self, loc: &Loc, f: impl FnOnce(&mut dyn Driver, &Progress) -> anyhow::Result<T> + Send + 'static) -> u64 {
         let schema = loc.schema.clone();
         self.run(loc, move |d, p| {
             enter_schema(d, &schema)?;

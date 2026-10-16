@@ -31,9 +31,32 @@ impl UserInfo {
 pub fn server_privileges(kind: DbKind) -> &'static [&'static str] {
     match kind {
         DbKind::Mysql => &[
-            "ALTER", "ALTER ROUTINE", "CREATE", "CREATE ROUTINE", "CREATE TEMPORARY TABLES", "CREATE USER", "CREATE VIEW",
-            "DELETE", "DROP", "EVENT", "EXECUTE", "FILE", "INDEX", "INSERT", "LOCK TABLES", "PROCESS", "REFERENCES", "RELOAD",
-            "REPLICATION CLIENT", "REPLICATION SLAVE", "SELECT", "SHOW DATABASES", "SHOW VIEW", "SHUTDOWN", "SUPER", "TRIGGER",
+            "ALTER",
+            "ALTER ROUTINE",
+            "CREATE",
+            "CREATE ROUTINE",
+            "CREATE TEMPORARY TABLES",
+            "CREATE USER",
+            "CREATE VIEW",
+            "DELETE",
+            "DROP",
+            "EVENT",
+            "EXECUTE",
+            "FILE",
+            "INDEX",
+            "INSERT",
+            "LOCK TABLES",
+            "PROCESS",
+            "REFERENCES",
+            "RELOAD",
+            "REPLICATION CLIENT",
+            "REPLICATION SLAVE",
+            "SELECT",
+            "SHOW DATABASES",
+            "SHOW VIEW",
+            "SHUTDOWN",
+            "SUPER",
+            "TRIGGER",
             "UPDATE",
         ],
         DbKind::Postgres => &["LOGIN", "SUPERUSER", "CREATEDB", "CREATEROLE", "INHERIT", "REPLICATION", "BYPASSRLS"],
@@ -45,8 +68,24 @@ pub fn server_privileges(kind: DbKind) -> &'static [&'static str] {
 pub fn object_privileges(kind: DbKind) -> &'static [&'static str] {
     match kind {
         DbKind::Mysql => &[
-            "SELECT", "INSERT", "UPDATE", "DELETE", "CREATE", "DROP", "INDEX", "ALTER", "CREATE VIEW", "SHOW VIEW", "TRIGGER",
-            "EXECUTE", "CREATE ROUTINE", "ALTER ROUTINE", "EVENT", "REFERENCES", "LOCK TABLES", "CREATE TEMPORARY TABLES",
+            "SELECT",
+            "INSERT",
+            "UPDATE",
+            "DELETE",
+            "CREATE",
+            "DROP",
+            "INDEX",
+            "ALTER",
+            "CREATE VIEW",
+            "SHOW VIEW",
+            "TRIGGER",
+            "EXECUTE",
+            "CREATE ROUTINE",
+            "ALTER ROUTINE",
+            "EVENT",
+            "REFERENCES",
+            "LOCK TABLES",
+            "CREATE TEMPORARY TABLES",
         ],
         DbKind::Postgres => &["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"],
         DbKind::Sqlite => &[],
@@ -81,12 +120,8 @@ pub fn list_users(d: &mut dyn Driver) -> Result<Vec<UserInfo>> {
             Ok(r.text_rows()
                 .iter()
                 .map(|row| {
-                    let privileges = server_privileges(kind)
-                        .iter()
-                        .enumerate()
-                        .filter(|(i, _)| row[i + 1].as_deref() == Some("t"))
-                        .map(|(_, p)| p.to_string())
-                        .collect();
+                    let privileges =
+                        server_privileges(kind).iter().enumerate().filter(|(i, _)| row[i + 1].as_deref() == Some("t")).map(|(_, p)| p.to_string()).collect();
                     UserInfo { name: row[0].clone().unwrap_or_default(), host: String::new(), privileges }
                 })
                 .collect())
@@ -135,10 +170,8 @@ pub fn save_user_sql(kind: DbKind, old: Option<&UserInfo>, new: &UserInfo, passw
             }
         }
         DbKind::Postgres => {
-            let attrs: Vec<String> = server_privileges(kind)
-                .iter()
-                .map(|p| if new.privileges.iter().any(|x| x == p) { p.to_string() } else { format!("NO{p}") })
-                .collect();
+            let attrs: Vec<String> =
+                server_privileges(kind).iter().map(|p| if new.privileges.iter().any(|x| x == p) { p.to_string() } else { format!("NO{p}") }).collect();
             let pw = if password.is_empty() { String::new() } else { format!(" PASSWORD {}", kind.quote_literal(password)) };
             match old {
                 None => out.push(format!("CREATE ROLE {} WITH {}{pw}", kind.quote_one(&new.name), attrs.join(" "))),
@@ -252,7 +285,9 @@ pub fn kill_sql(kind: DbKind, id: &str) -> String {
 pub fn variables(d: &mut dyn Driver) -> Result<QueryResult> {
     let sql = match d.kind() {
         DbKind::Mysql => "SHOW GLOBAL VARIABLES",
-        DbKind::Postgres => "SELECT name AS \"Variable\", setting AS \"Value\", COALESCE(unit, '') AS \"Unit\", short_desc AS \"Description\" FROM pg_settings ORDER BY name",
+        DbKind::Postgres => {
+            "SELECT name AS \"Variable\", setting AS \"Value\", COALESCE(unit, '') AS \"Unit\", short_desc AS \"Description\" FROM pg_settings ORDER BY name"
+        }
         DbKind::Sqlite => "SELECT * FROM pragma_compile_options",
     };
     d.execute(sql).map(localize_columns)
@@ -261,11 +296,13 @@ pub fn variables(d: &mut dyn Driver) -> Result<QueryResult> {
 pub fn status(d: &mut dyn Driver) -> Result<QueryResult> {
     let sql = match d.kind() {
         DbKind::Mysql => "SHOW GLOBAL STATUS",
-        DbKind::Postgres => "SELECT datname AS \"Database\", numbackends AS \"Connections\", xact_commit AS \"Commits\", \
+        DbKind::Postgres => {
+            "SELECT datname AS \"Database\", numbackends AS \"Connections\", xact_commit AS \"Commits\", \
                              xact_rollback AS \"Rollbacks\", blks_read AS \"Blocks read\", blks_hit AS \"Cache hits\", \
                              tup_returned AS \"Rows returned\", tup_inserted AS \"Inserted\", tup_updated AS \"Updated\", \
                              tup_deleted AS \"Deleted\", pg_size_pretty(pg_database_size(datname)) AS \"Size\" \
-                             FROM pg_stat_database WHERE datname IS NOT NULL ORDER BY 1",
+                             FROM pg_stat_database WHERE datname IS NOT NULL ORDER BY 1"
+        }
         DbKind::Sqlite => "SELECT 'sqlite_version' AS Variable, sqlite_version() AS Value",
     };
     d.execute(sql).map(localize_columns)
@@ -290,13 +327,7 @@ pub struct FindHit {
 }
 
 /// Searches for `needle` in every text column of the schema's tables.
-pub fn find_in_schema(
-    d: &mut dyn Driver,
-    schema: &str,
-    needle: &str,
-    case_sensitive: bool,
-    progress: &mut dyn FnMut(&str),
-) -> Result<Vec<FindHit>> {
+pub fn find_in_schema(d: &mut dyn Driver, schema: &str, needle: &str, case_sensitive: bool, progress: &mut dyn FnMut(&str)) -> Result<Vec<FindHit>> {
     let kind = d.kind();
     let pattern = kind.quote_literal(&format!("%{}%", needle.replace('%', "\\%").replace('_', "\\_")));
     let mut hits = Vec::new();

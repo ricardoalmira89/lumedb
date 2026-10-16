@@ -237,10 +237,7 @@ fn http_error(e: ureq::Error) -> anyhow::Error {
     match e {
         ureq::Error::Status(code, r) => {
             let body = r.into_string().unwrap_or_default();
-            let msg = serde_json::from_str::<serde_json::Value>(&body)
-                .ok()
-                .and_then(|v| v["error"]["message"].as_str().map(str::to_string))
-                .unwrap_or(body);
+            let msg = serde_json::from_str::<serde_json::Value>(&body).ok().and_then(|v| v["error"]["message"].as_str().map(str::to_string)).unwrap_or(body);
             match code {
                 401 => anyhow!(trf!("invalid API key ({code}): {msg}", code = code, msg = msg)),
                 429 => anyhow!(trf!("rate limit reached ({code}): {msg}", code = code, msg = msg)),

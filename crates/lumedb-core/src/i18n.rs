@@ -99,11 +99,7 @@ impl Default for Prefs {
 }
 
 pub fn load_prefs() -> Prefs {
-    config_dir()
-        .ok()
-        .and_then(|d| std::fs::read_to_string(d.join("prefs.json")).ok())
-        .and_then(|t| serde_json::from_str(&t).ok())
-        .unwrap_or_default()
+    config_dir().ok().and_then(|d| std::fs::read_to_string(d.join("prefs.json")).ok()).and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default()
 }
 
 pub fn save_prefs(p: &Prefs) -> anyhow::Result<()> {

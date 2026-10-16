@@ -97,8 +97,7 @@ fn sample(d: &mut dyn Driver, schema: &str) {
         "INSERT INTO {t} (nombre, email, activo, foto) VALUES ('Ana', 'ana@x.es', {yes}, {foto}), ('Luis O''Neil', NULL, {no}, NULL), ('Eva', 'eva@x.es', {yes}, NULL)"
     ))
     .unwrap();
-    d.execute(&format!("INSERT INTO {} (id, cliente_id, total) VALUES (1, 1, 10.50), (2, 1, 3.25), (3, 3, 99.99)", k.qualified(schema, "pedidos")))
-        .unwrap();
+    d.execute(&format!("INSERT INTO {} (id, cliente_id, total) VALUES (1, 1, 10.50), (2, 1, 3.25), (3, 3, 99.99)", k.qualified(schema, "pedidos"))).unwrap();
 }
 
 fn count(d: &mut dyn Driver, schema: &str, t: &str) -> u64 {
@@ -163,8 +162,7 @@ fn dump_and_restore() {
         let mut d = connect(&cfg(k, db.to_str().unwrap())).unwrap();
         let s = fresh(d.as_mut(), "lumedb_dump");
         sample(d.as_mut(), &s);
-        d.execute(&format!("CREATE VIEW {} AS SELECT nombre FROM {}", k.qualified(&s, "v_nombres"), k.qualified(&s, "clientes")))
-            .unwrap();
+        d.execute(&format!("CREATE VIEW {} AS SELECT nombre FROM {}", k.qualified(&s, "v_nombres"), k.qualified(&s, "clientes"))).unwrap();
         if k == DbKind::Mysql {
             d.execute(&format!("CREATE PROCEDURE {}() BEGIN SELECT 1; SELECT 2; END", k.qualified(&s, "p_doble"))).unwrap();
         }
@@ -314,7 +312,8 @@ fn find_users_monitor() {
         }
         let mut u2 = u.clone();
         u2.name = "lumedb_u2".into();
-        u2.privileges = vec![if k == DbKind::Mysql { "PROCESS".into() } else { "CREATEDB".into() }, if k == DbKind::Mysql { "SELECT".into() } else { "LOGIN".into() }];
+        u2.privileges =
+            vec![if k == DbKind::Mysql { "PROCESS".into() } else { "CREATEDB".into() }, if k == DbKind::Mysql { "SELECT".into() } else { "LOGIN".into() }];
         for s in admin::save_user_sql(k, Some(&u), &u2, "") {
             d.execute(&s).unwrap_or_else(|e| panic!("{k:?} {s}: {e}"));
         }

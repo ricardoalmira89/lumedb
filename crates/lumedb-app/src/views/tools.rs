@@ -117,7 +117,9 @@ impl View for FindWindow {
             if go && !self.needle.is_empty() {
                 let (schema, needle, cs) = (self.loc.schema.clone(), self.needle.clone(), self.case_sensitive);
                 self.hits = None;
-                self.id = Some(cx.run(&self.loc, move |d, p| admin::find_in_schema(d, &schema, &needle, cs, &mut |t| p.report(trf!("Searching {table}…", table = t)))));
+                self.id = Some(
+                    cx.run(&self.loc, move |d, p| admin::find_in_schema(d, &schema, &needle, cs, &mut |t| p.report(trf!("Searching {table}…", table = t)))),
+                );
             }
         });
         if self.id.is_some() {
@@ -262,10 +264,58 @@ impl Gen {
     }
 }
 
-const FIRST: &[&str] = &["Lucía", "Hugo", "Martina", "Mateo", "Sofía", "Leo", "Julia", "Pablo", "Valeria", "Daniel", "Paula", "Álvaro", "Emma", "Manuel", "Carla", "Javier", "Sara", "Diego", "Noa", "Adrián"];
-const LAST: &[&str] = &["García", "Rodríguez", "González", "Fernández", "López", "Martínez", "Sánchez", "Pérez", "Gómez", "Martín", "Jiménez", "Ruiz", "Hernández", "Díaz", "Moreno", "Muñoz", "Álvarez", "Romero", "Navarro", "Torres"];
-const CITIES: &[&str] = &["Madrid", "Barcelona", "Valencia", "Sevilla", "Zaragoza", "Málaga", "Murcia", "Palma", "Bilbao", "Alicante", "Córdoba", "Valladolid", "Vigo", "Gijón", "Granada", "Lisboa", "París", "Berlín", "Roma", "Ámsterdam"];
-const WORDS: &[&str] = &["lorem", "ipsum", "dolor", "sit", "amet", "datos", "prueba", "cliente", "pedido", "rápido", "azul", "verde", "nube", "río", "mesa", "libro", "luz", "tierra", "mar", "sol"];
+const FIRST: &[&str] = &[
+    "Lucía", "Hugo", "Martina", "Mateo", "Sofía", "Leo", "Julia", "Pablo", "Valeria", "Daniel", "Paula", "Álvaro", "Emma", "Manuel", "Carla", "Javier", "Sara",
+    "Diego", "Noa", "Adrián",
+];
+const LAST: &[&str] = &[
+    "García",
+    "Rodríguez",
+    "González",
+    "Fernández",
+    "López",
+    "Martínez",
+    "Sánchez",
+    "Pérez",
+    "Gómez",
+    "Martín",
+    "Jiménez",
+    "Ruiz",
+    "Hernández",
+    "Díaz",
+    "Moreno",
+    "Muñoz",
+    "Álvarez",
+    "Romero",
+    "Navarro",
+    "Torres",
+];
+const CITIES: &[&str] = &[
+    "Madrid",
+    "Barcelona",
+    "Valencia",
+    "Sevilla",
+    "Zaragoza",
+    "Málaga",
+    "Murcia",
+    "Palma",
+    "Bilbao",
+    "Alicante",
+    "Córdoba",
+    "Valladolid",
+    "Vigo",
+    "Gijón",
+    "Granada",
+    "Lisboa",
+    "París",
+    "Berlín",
+    "Roma",
+    "Ámsterdam",
+];
+const WORDS: &[&str] = &[
+    "lorem", "ipsum", "dolor", "sit", "amet", "datos", "prueba", "cliente", "pedido", "rápido", "azul", "verde", "nube", "río", "mesa", "libro", "luz",
+    "tierra", "mar", "sol",
+];
 
 /// Automatic generator based on the column name and type.
 fn auto_gen(c: &ColumnDef) -> Gen {
@@ -313,7 +363,7 @@ fn auto_gen(c: &ColumnDef) -> Gen {
     if t.contains("blob") || t.contains("bytea") || t.contains("binary") {
         return Gen::Null;
     }
-    let len = t.split(|c| c == '(' || c == ')').nth(1).and_then(|n| n.parse::<usize>().ok()).unwrap_or(30).clamp(1, 60);
+    let len = t.split(['(', ')']).nth(1).and_then(|n| n.parse::<usize>().ok()).unwrap_or(30).clamp(1, 60);
     Gen::Text(len)
 }
 
@@ -441,9 +491,7 @@ impl DataGenWindow {
         let gens = self.resolved();
         let mut rng = rand::thread_rng();
         let cols: Vec<String> = self.columns.iter().zip(&gens).filter(|(_, g)| !matches!(g, Gen::Skip)).map(|((c, _), _)| c.name.clone()).collect();
-        let rows = (0..10)
-            .map(|i| gens.iter().filter_map(|g| generate(g, i, &mut rng, &[Value::Text("(FK)".into())], kind)).collect())
-            .collect();
+        let rows = (0..10).map(|i| gens.iter().filter_map(|g| generate(g, i, &mut rng, &[Value::Text("(FK)".into())], kind)).collect()).collect();
         self.preview = Some(QueryResult { columns: cols, rows, ..Default::default() });
         self.grid.reset();
     }
@@ -591,7 +639,13 @@ impl View for DataGenWindow {
                                 .collect();
                             if names.is_empty() {
                                 for _ in 0..n {
-                                    d.execute(&lumedb_core::edit::change_sql(kind, &schema, &table, &lumedb_core::edit::RowChange::Insert { values: vec![] }, false))?;
+                                    d.execute(&lumedb_core::edit::change_sql(
+                                        kind,
+                                        &schema,
+                                        &table,
+                                        &lumedb_core::edit::RowChange::Insert { values: vec![] },
+                                        false,
+                                    ))?;
                                 }
                             } else {
                                 for s in lumedb_core::transfer::insert_statements(kind, &schema, &table, &names, &batch, 200) {
@@ -719,7 +773,10 @@ impl View for BackupWindow {
             None => {}
         }
         ui.horizontal(|ui| {
-            if ui.add_enabled(self.id.is_none() && self.result.is_none(), egui::Button::new(RichText::new(format!("{}  {}", icon::PLAY, tr("Start"))).strong())).clicked() {
+            if ui
+                .add_enabled(self.id.is_none() && self.result.is_none(), egui::Button::new(RichText::new(format!("{}  {}", icon::PLAY, tr("Start"))).strong()))
+                .clicked()
+            {
                 let (conn, schema, comment) = (cx.conn_name(self.loc.conn), self.loc.schema.clone(), self.comment.clone());
                 self.id = Some(cx.run(&self.loc, move |d, p| {
                     let path = dump::create_backup(d, &conn, &schema, &comment, &mut |t| p.report(trf!("Copying {table}…", table = t)))?;
@@ -772,7 +829,14 @@ impl View for RestoreWindow {
         if let Some(b) = dump::list_backups(&conn, &self.loc.schema).unwrap_or_default().into_iter().find(|b| b.name == self.name) {
             ui.label(trf!("Date: {date}    Size: {size}", date = b.created, size = human_size(b.size)));
         }
-        ui.label(RichText::new(format!("{}  {}", icon::WARNING, trf!("The tables and objects of \"{schema}\" will be recreated. Current data will be replaced.", schema = self.loc.schema))).color(theme::ORANGE));
+        ui.label(
+            RichText::new(format!(
+                "{}  {}",
+                icon::WARNING,
+                trf!("The tables and objects of \"{schema}\" will be recreated. Current data will be replaced.", schema = self.loc.schema)
+            ))
+            .color(theme::ORANGE),
+        );
         ui.add_space(6.0);
         match &self.result {
             Some(Ok(r)) if r.errors.is_empty() => {
@@ -790,12 +854,19 @@ impl View for RestoreWindow {
             None => {}
         }
         ui.horizontal(|ui| {
-            if ui.add_enabled(self.id.is_none() && self.result.is_none(), egui::Button::new(RichText::new(format!("{}  {}", icon::PLAY, tr("Restore"))).strong())).clicked() {
+            if ui
+                .add_enabled(
+                    self.id.is_none() && self.result.is_none(),
+                    egui::Button::new(RichText::new(format!("{}  {}", icon::PLAY, tr("Restore"))).strong()),
+                )
+                .clicked()
+            {
                 let path = dump::backup_dir(&conn, &self.loc.schema).map(|d| d.join(format!("{}.sql.gz", self.name)));
                 let schema = self.loc.schema.clone();
-                self.id = Some(cx.run(&self.loc, move |d, p| {
-                    dump::restore_backup(d, &path?, &schema, &mut |i, n| p.report(trf!("{i} of {n} statements", i = i, n = n)))
-                }));
+                self.id =
+                    Some(cx.run(&self.loc, move |d, p| {
+                        dump::restore_backup(d, &path?, &schema, &mut |i, n| p.report(trf!("{i} of {n} statements", i = i, n = n)))
+                    }));
             }
             if self.id.is_some() {
                 ui.spinner();
@@ -1044,7 +1115,10 @@ impl View for AiSettingsWindow {
             };
             ui.label(tr("API key:"));
             ui.horizontal(|ui| {
-                if ui.add(egui::TextEdit::singleline(key).password(!self.show_key).desired_width(320.0).hint_text(trf!("or variable {env}", env = env))).changed() {
+                if ui
+                    .add(egui::TextEdit::singleline(key).password(!self.show_key).desired_width(320.0).hint_text(trf!("or variable {env}", env = env)))
+                    .changed()
+                {
                     self.saved = false;
                 }
                 let eye = if self.show_key { icon::EYE_SLASH } else { icon::EYE };

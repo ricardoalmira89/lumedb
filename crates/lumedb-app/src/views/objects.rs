@@ -7,10 +7,10 @@ use lumedb_core::{tr, trf, DbKind, DbObject, ObjectKind};
 
 use super::{human_size, read_saved_query, Cx, View};
 use crate::app::{take, Action, Loc, ObjGroup, ObjView, Selection, Status};
-use crate::worker::TaskResult;
 use crate::theme;
 use crate::ui::group_icon;
 use crate::widgets::{tool_button, toolbar};
+use crate::worker::TaskResult;
 
 #[derive(Default)]
 pub struct ObjectsTab {
@@ -37,10 +37,7 @@ pub fn object_menu(ui: &mut egui::Ui, loc: &Loc, o: &DbObject, kind: DbKind, pus
         ui.close_menu();
     }
     if ui.button(trf!("Delete {what}", what = what)).clicked() {
-        push(Action::Confirm(
-            trf!("Delete \"{name}\"? This action cannot be undone.", name = o.label()),
-            Box::new(Action::DropObject(loc.clone(), o.clone())),
-        ));
+        push(Action::Confirm(trf!("Delete \"{name}\"? This action cannot be undone.", name = o.label()), Box::new(Action::DropObject(loc.clone(), o.clone()))));
         ui.close_menu();
     }
     if o.kind == ObjectKind::Table {
@@ -358,7 +355,8 @@ impl View for ObjectsTab {
         }
         if view == ObjView::List {
             if let ObjGroup::Kind(k) = group {
-                let objs: Vec<DbObject> = s.objects_at(&loc).map(|v| v.iter().filter(|o| o.kind == k && matches(&o.name)).cloned().collect()).unwrap_or_default();
+                let objs: Vec<DbObject> =
+                    s.objects_at(&loc).map(|v| v.iter().filter(|o| o.kind == k && matches(&o.name)).cloned().collect()).unwrap_or_default();
                 egui::ScrollArea::vertical().auto_shrink(false).show(ui, |ui| {
                     ui.add_space(6.0);
                     ui.horizontal_wrapped(|ui| {
@@ -383,10 +381,16 @@ impl View for ObjectsTab {
 
         ui.push_id(("objects", group.label()), |ui| match group {
             ObjGroup::Kind(k) => {
-                let objs: Vec<DbObject> = s.objects_at(&loc).map(|v| v.iter().filter(|o| o.kind == k && matches(&o.name)).cloned().collect()).unwrap_or_default();
+                let objs: Vec<DbObject> =
+                    s.objects_at(&loc).map(|v| v.iter().filter(|o| o.kind == k && matches(&o.name)).cloned().collect()).unwrap_or_default();
                 let stats = s.stats_at(&loc).cloned().unwrap_or_default();
                 let table_cols = k == ObjectKind::Table && !stats.is_empty();
-                let mut tb = TableBuilder::new(ui).striped(false).resizable(true).auto_shrink(false).sense(Sense::click()).column(Column::initial(260.0).at_least(120.0).clip(true));
+                let mut tb = TableBuilder::new(ui)
+                    .striped(false)
+                    .resizable(true)
+                    .auto_shrink(false)
+                    .sense(Sense::click())
+                    .column(Column::initial(260.0).at_least(120.0).clip(true));
                 let headers: Vec<&str> = if table_cols {
                     vec![tr("Name"), tr("Rows"), tr("Data Length"), tr("Engine"), tr("Modified Date"), tr("Comment")]
                 } else {

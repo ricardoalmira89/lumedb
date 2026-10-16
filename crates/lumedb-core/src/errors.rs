@@ -72,8 +72,7 @@ pub fn clean(raw: &str) -> String {
     for line in raw.lines() {
         let mut l = line.trim().to_string();
         // `Name { text }` → `text` (mysql crate's error Display), possibly nested.
-        loop {
-            let Some(open) = l.find(" { ") else { break };
+        while let Some(open) = l.find(" { ") {
             let name = &l[..open];
             if name.is_empty() || !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') || !l.ends_with('}') {
                 break;

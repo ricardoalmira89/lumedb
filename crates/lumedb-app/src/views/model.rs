@@ -130,7 +130,11 @@ impl View for RelationWindow {
 
 impl View for ModelTab {
     fn title(&self, cx: &Cx) -> String {
-        format!("{}{}", if self.canvas.moved { "*" } else { "" }, trf!("{schema} ({conn}) - Model", schema = self.loc.schema, conn = cx.conn_name(self.loc.conn)))
+        format!(
+            "{}{}",
+            if self.canvas.moved { "*" } else { "" },
+            trf!("{schema} ({conn}) - Model", schema = self.loc.schema, conn = cx.conn_name(self.loc.conn))
+        )
     }
     fn icon(&self) -> (&'static str, Color32) {
         (icon::TREE_STRUCTURE, theme::BLUE)

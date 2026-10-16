@@ -9,6 +9,7 @@
 Browse, edit, query and model your databases in one desktop app,<br>
 with a familiar workflow, an ER diagram that actually reads well, and SQL written by AI from a comment.
 
+[![CI](https://github.com/ricardoalmira89/lumedb/actions/workflows/ci.yml/badge.svg)](https://github.com/ricardoalmira89/lumedb/actions/workflows/ci.yml)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
 ![Rust](https://img.shields.io/badge/rust-stable-orange.svg)
 ![Status](https://img.shields.io/badge/status-alpha-yellow.svg)

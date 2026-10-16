@@ -326,8 +326,7 @@ fn status_bar(ctx: &egui::Context, app: &mut LumeDbApp) {
                 }
                 ui.label(RichText::new(parts.join("    ")).size(12.0));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    let toggle =
-                        ui.selectable_label(app.nav.show_info, RichText::new(icon::SIDEBAR_SIMPLE).size(14.0)).on_hover_text(tr("Information Pane"));
+                    let toggle = ui.selectable_label(app.nav.show_info, RichText::new(icon::SIDEBAR_SIMPLE).size(14.0)).on_hover_text(tr("Information Pane"));
                     if toggle.clicked() {
                         app.nav.show_info = !app.nav.show_info;
                     }
@@ -794,10 +793,7 @@ fn group_node(ui: &mut egui::Ui, app: &mut LumeDbApp, loc: &Loc, g: ObjGroup) {
         ObjGroup::Kind(k) => s
             .objects_at(loc)
             .map(|v| {
-                v.iter()
-                    .filter(|o| o.kind == k && matches(&o.name))
-                    .map(|o| (o.label(), Selection::Object(loc.clone(), o.clone()), Some(o.clone())))
-                    .collect()
+                v.iter().filter(|o| o.kind == k && matches(&o.name)).map(|o| (o.label(), Selection::Object(loc.clone(), o.clone()), Some(o.clone()))).collect()
             })
             .unwrap_or_default(),
         ObjGroup::Queries => lumedb_core::store::list_queries(&s.cfg.name)
@@ -868,6 +864,9 @@ fn group_node(ui: &mut egui::Ui, app: &mut LumeDbApp, loc: &Loc, g: ObjGroup) {
     });
 }
 
+/// A group under an expanded table: title, icon, colour and its items (name, type, primary key).
+type TreeGroup<'a> = (&'a str, &'a str, Color32, Vec<(String, String, bool)>);
+
 /// Table in the tree, expandable like in Navicat: Fields, Indexes, Foreign Keys, Checks and
 /// Triggers. Its structure is read the first time it is opened.
 fn table_node(ui: &mut egui::Ui, app: &mut LumeDbApp, loc: &Loc, label: &str, isel: &Selection, obj: &DbObject, (ic, color): (&str, Color32)) {
@@ -891,7 +890,7 @@ fn table_node(ui: &mut egui::Ui, app: &mut LumeDbApp, loc: &Loc, label: &str, is
         };
         let fields: Vec<(String, String, bool)> = t.fields.clone();
         let simple = |v: &[String]| v.iter().map(|n| (n.clone(), String::new(), false)).collect::<Vec<_>>();
-        let groups: [(&str, &str, Color32, Vec<(String, String, bool)>); 5] = [
+        let groups: [TreeGroup; 5] = [
             ("Fields", icon::COLUMNS, theme::BLUE, fields),
             ("Indexes", icon::SORT_ASCENDING, theme::BLUE, simple(&t.indexes)),
             ("Foreign Keys", icon::LINK, theme::BLUE, simple(&t.foreign_keys)),
@@ -908,7 +907,11 @@ fn table_node(ui: &mut egui::Ui, app: &mut LumeDbApp, loc: &Loc, label: &str, is
                     let (lic, lcolor) = if pk { (icon::KEY, theme::ORANGE) } else { (gic, theme::MUTED) };
                     let mut job = icon_text(lic, lcolor, &name, ui);
                     if !ty.is_empty() {
-                        job.append(&format!("  {ty}"), 0.0, egui::TextFormat { color: theme::MUTED, font_id: egui::FontId::proportional(12.0), ..Default::default() });
+                        job.append(
+                            &format!("  {ty}"),
+                            0.0,
+                            egui::TextFormat { color: theme::MUTED, font_id: egui::FontId::proportional(12.0), ..Default::default() },
+                        );
                     }
                     if ui.add(egui::SelectableLabel::new(false, job)).double_clicked() {
                         design = true;

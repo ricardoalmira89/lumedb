@@ -48,4 +48,3 @@ fn schema_description_includes_columns_and_fks() {
     assert!(s.contains("TABLE clientes(id INTEGER PK, nombre TEXT NOT NULL)"), "{s}");
     assert!(s.contains("FK pedidos.(cliente_id) -> clientes.(id)"), "{s}");
 }
-

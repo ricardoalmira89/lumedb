@@ -261,7 +261,11 @@ impl View for UserEditor {
                         ui.end_row();
                     }
                     ui.label(tr("Password:"));
-                    ui.add(egui::TextEdit::singleline(&mut self.password).password(true).desired_width(260.0).hint_text(if self.old.is_some() { tr("(unchanged)") } else { "" }));
+                    ui.add(egui::TextEdit::singleline(&mut self.password).password(true).desired_width(260.0).hint_text(if self.old.is_some() {
+                        tr("(unchanged)")
+                    } else {
+                        ""
+                    }));
                     ui.end_row();
                     ui.label(tr("Confirm password:"));
                     ui.add(egui::TextEdit::singleline(&mut self.confirm).password(true).desired_width(260.0));

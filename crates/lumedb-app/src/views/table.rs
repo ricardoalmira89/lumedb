@@ -16,6 +16,9 @@ use crate::theme;
 use crate::widgets::{cell_grid, results_grid, tool_button, toolbar, value_label, GridState};
 use crate::worker::TaskResult;
 
+/// Where the foreign key picker leaves the chosen value.
+type PickSlot = Arc<Mutex<Option<Value>>>;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum RowRef {
     Existing(usize),
@@ -37,7 +40,7 @@ pub struct TableTab {
     /// Foreign keys of the table: their columns get a "…" button to pick the value.
     fks: Vec<ForeignKeyDef>,
     /// Cell waiting for a value from the foreign key picker, and where the picker leaves it.
-    fk_pick: Option<(RowRef, usize, Arc<Mutex<Option<Value>>>)>,
+    fk_pick: Option<(RowRef, usize, PickSlot)>,
     /// Picker requested from the grid (cell, foreign key), opened in `ui`.
     fk_open: Option<(RowRef, usize, usize)>,
     result: Option<QueryResult>,
@@ -162,12 +165,7 @@ impl TableTab {
 
     fn value_at(&self, r: RowRef, c: usize) -> Value {
         match r {
-            RowRef::Existing(i) => self
-                .edits
-                .get(&(i, c))
-                .cloned()
-                .or_else(|| self.result.as_ref().map(|res| res.rows[i][c].clone()))
-                .unwrap_or(Value::Null),
+            RowRef::Existing(i) => self.edits.get(&(i, c)).cloned().or_else(|| self.result.as_ref().map(|res| res.rows[i][c].clone())).unwrap_or(Value::Null),
             RowRef::New(i) => self.new_rows[i][c].clone().unwrap_or(Value::Null),
         }
     }
@@ -189,12 +187,7 @@ impl TableTab {
     /// Key that identifies an existing row: the primary key, or all columns.
     fn row_key(&self, i: usize) -> (Vec<(String, Value)>, bool) {
         let res = self.result.as_ref().unwrap();
-        let pk: Vec<usize> = self
-            .columns
-            .iter()
-            .filter(|c| c.primary_key)
-            .filter_map(|c| res.column_index(&c.name))
-            .collect();
+        let pk: Vec<usize> = self.columns.iter().filter(|c| c.primary_key).filter_map(|c| res.column_index(&c.name)).collect();
         if pk.is_empty() {
             (res.columns.iter().cloned().zip(res.rows[i].iter().cloned()).filter(|(_, v)| !matches!(v, Value::Bytes(_))).collect(), true)
         } else {
@@ -366,8 +359,7 @@ impl TableTab {
             if let Some(r) = scroll_to {
                 tb = tb.scroll_to_row(r, Some(egui::Align::Center));
             }
-            tb
-                .striped(false)
+            tb.striped(false)
                 // Dragging the content to scroll would take the presses that select and edit cells.
                 .drag_to_scroll(false)
                 .resizable(true)
@@ -479,7 +471,10 @@ impl TableTab {
                                             // Like Navicat: entering a cell selects all its text.
                                             r.request_focus();
                                             let mut state = out.state;
-                                            state.cursor.set_char_range(Some(egui::text::CCursorRange::two(egui::text::CCursor::new(0), egui::text::CCursor::new(len))));
+                                            state.cursor.set_char_range(Some(egui::text::CCursorRange::two(
+                                                egui::text::CCursor::new(0),
+                                                egui::text::CCursor::new(len),
+                                            )));
                                             state.store(ui.ctx(), r.id);
                                             *focused = true;
                                         }
@@ -576,7 +571,9 @@ impl TableTab {
         }
         if commit_edit {
             if let Some((r, c, buf, _)) = self.editing.take() {
-                let v = if self.columns.iter().find(|col| Some(&col.name) == columns.get(c)).is_some_and(|col| is_numeric(&col.data_type)) && buf.parse::<f64>().is_ok() {
+                let v = if self.columns.iter().find(|col| Some(&col.name) == columns.get(c)).is_some_and(|col| is_numeric(&col.data_type))
+                    && buf.parse::<f64>().is_ok()
+                {
                     Value::Number(buf)
                 } else {
                     Value::Text(buf)
@@ -618,7 +615,11 @@ impl TableTab {
             self.selected = Some((self.row_ref(pos), 0));
         }
         // Ctrl+C with whole rows selected copies them as tab-separated text, with a header line.
-        if !self.sel_rows.is_empty() && self.editing.is_none() && ui.memory(|m| m.focused().is_none()) && ui.input(|i| i.events.iter().any(|e| matches!(e, egui::Event::Copy))) {
+        if !self.sel_rows.is_empty()
+            && self.editing.is_none()
+            && ui.memory(|m| m.focused().is_none())
+            && ui.input(|i| i.events.iter().any(|e| matches!(e, egui::Event::Copy)))
+        {
             let mut out = columns.join("\t");
             for &pos in &self.sel_rows {
                 let r = self.row_ref(pos);
@@ -736,10 +737,13 @@ impl TableTab {
                 self.browse.offset += self.browse.limit;
                 self.pending_reload = true;
             }
-            ui.label(RichText::new(match pages {
-                Some(p) => format!("{page} / {p}"),
-                None => page.to_string(),
-            }).size(12.0));
+            ui.label(
+                RichText::new(match pages {
+                    Some(p) => format!("{page} / {p}"),
+                    None => page.to_string(),
+                })
+                .size(12.0),
+            );
             if tool_button(ui, page > 1, icon::CARET_LEFT, "", theme::BLUE).on_hover_text(tr("Previous page")).clicked() {
                 self.browse.offset = self.browse.offset.saturating_sub(self.browse.limit);
                 self.pending_reload = true;
@@ -830,7 +834,12 @@ impl View for TableTab {
             self.apply(cx);
         }
         // Delete key on the selected records, when not typing somewhere.
-        if editable && self.editing.is_none() && self.confirm_delete.is_none() && ui.memory(|m| m.focused().is_none()) && ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Delete)) {
+        if editable
+            && self.editing.is_none()
+            && self.confirm_delete.is_none()
+            && ui.memory(|m| m.focused().is_none())
+            && ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::Delete))
+        {
             self.ask_delete();
         }
         if let Some(n) = self.confirm_delete {
@@ -872,7 +881,15 @@ impl View for TableTab {
                     self.memo = Some((r, c, self.value_at(r, c).to_text().unwrap_or_default()));
                 }
             }
-            if tool_button(ui, true, icon::FUNNEL, lumedb_core::trc("toolbar", "Filter"), if self.browse.filter.is_empty() { theme::BLUE } else { theme::ORANGE }).clicked() {
+            if tool_button(
+                ui,
+                true,
+                icon::FUNNEL,
+                lumedb_core::trc("toolbar", "Filter"),
+                if self.browse.filter.is_empty() { theme::BLUE } else { theme::ORANGE },
+            )
+            .clicked()
+            {
                 self.show_filter = !self.show_filter;
             }
             if tool_button(ui, !self.browse.order.is_empty(), icon::SORT_ASCENDING, tr("Clear sort"), theme::BLUE).clicked() {

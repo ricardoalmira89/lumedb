@@ -44,12 +44,7 @@ pub struct DesignerTab {
 
 impl DesignerTab {
     pub fn new(loc: Loc, name: Option<String>, kind: DbKind) -> Self {
-        let design = TableDesign {
-            schema: loc.schema.clone(),
-            name: name.clone().unwrap_or_default(),
-            original_name: name.clone(),
-            ..Default::default()
-        };
+        let design = TableDesign { schema: loc.schema.clone(), name: name.clone().unwrap_or_default(), original_name: name.clone(), ..Default::default() };
         Self {
             loc,
             kind,
@@ -86,8 +81,7 @@ impl DesignerTab {
         let schema = self.loc.schema.clone();
         let name = self.design.original_name.clone();
         self.load_id = Some(cx.run(&self.loc, move |d, _| {
-            let tables: Vec<String> =
-                meta::list_objects(d, &schema)?.into_iter().filter(|o| o.kind == ObjectKind::Table).map(|o| o.name).collect();
+            let tables: Vec<String> = meta::list_objects(d, &schema)?.into_iter().filter(|o| o.kind == ObjectKind::Table).map(|o| o.name).collect();
             let design = match name {
                 Some(n) => Some(meta::table_design(d, &schema, &n)?),
                 None => None,
@@ -139,12 +133,19 @@ impl DesignerTab {
         let kind = self.kind;
         toolbar(ui, |ui| {
             if tool_button(ui, true, icon::PLUS, tr("Add field"), theme::GREEN).clicked() {
-                self.design.columns.push(ColumnDef { name: format!("field{}", self.design.columns.len() + 1), data_type: ddl::type_suggestions(kind)[if kind == DbKind::Sqlite { 2 } else { 8 }].into(), nullable: true, ..Default::default() });
+                self.design.columns.push(ColumnDef {
+                    name: format!("field{}", self.design.columns.len() + 1),
+                    data_type: ddl::type_suggestions(kind)[if kind == DbKind::Sqlite { 2 } else { 8 }].into(),
+                    nullable: true,
+                    ..Default::default()
+                });
                 self.field = Some(self.design.columns.len() - 1);
             }
             if tool_button(ui, true, icon::ARROW_ELBOW_DOWN_RIGHT, tr("Insert field"), theme::GREEN).clicked() {
                 let at = self.field.unwrap_or(0);
-                self.design.columns.insert(at, ColumnDef { name: "new_field".into(), data_type: ddl::type_suggestions(kind)[0].into(), nullable: true, ..Default::default() });
+                self.design
+                    .columns
+                    .insert(at, ColumnDef { name: "new_field".into(), data_type: ddl::type_suggestions(kind)[0].into(), nullable: true, ..Default::default() });
                 self.field = Some(at);
             }
             if tool_button(ui, self.field.is_some(), icon::TRASH, tr("Delete field"), theme::RED).clicked() {
@@ -241,7 +242,11 @@ impl DesignerTab {
                             }
                         });
                         row.col(|ui| {
-                            let text = if c.primary_key { RichText::new(icon::KEY).color(theme::ORANGE) } else { RichText::new(icon::KEY).color(Color32::from_gray(0xC8)) };
+                            let text = if c.primary_key {
+                                RichText::new(icon::KEY).color(theme::ORANGE)
+                            } else {
+                                RichText::new(icon::KEY).color(Color32::from_gray(0xC8))
+                            };
                             if ui.add(egui::Button::new(text).frame(false)).on_hover_text(tr("Primary key")).clicked() {
                                 c.primary_key = !c.primary_key;
                                 if c.primary_key {
@@ -472,7 +477,13 @@ impl View for DesignerTab {
                     DbKind::Mysql => "int",
                     DbKind::Sqlite => "INTEGER",
                 };
-                self.design.columns.push(ColumnDef { name: "id".into(), data_type: id_type.into(), primary_key: true, auto_increment: true, ..Default::default() });
+                self.design.columns.push(ColumnDef {
+                    name: "id".into(),
+                    data_type: id_type.into(),
+                    primary_key: true,
+                    auto_increment: true,
+                    ..Default::default()
+                });
             }
         }
         let save_key = ui.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::S));
@@ -534,19 +545,24 @@ impl View for DesignerTab {
         if let Some(name) = &mut self.name_dialog {
             let mut done = None;
             let mut cancel = false;
-            egui::Window::new(tr("Table name")).id(egui::Id::new("designer_table_name")).collapsible(false).resizable(false).anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO).show(ui.ctx(), |ui| {
-                ui.label(tr("Enter the table name:"));
-                let r = ui.text_edit_singleline(name);
-                r.request_focus();
-                ui.horizontal(|ui| {
-                    if ui.button(tr("OK")).clicked() || (r.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter))) {
-                        done = Some(name.clone());
-                    }
-                    if ui.button(tr("Cancel")).clicked() {
-                        cancel = true;
-                    }
+            egui::Window::new(tr("Table name"))
+                .id(egui::Id::new("designer_table_name"))
+                .collapsible(false)
+                .resizable(false)
+                .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
+                .show(ui.ctx(), |ui| {
+                    ui.label(tr("Enter the table name:"));
+                    let r = ui.text_edit_singleline(name);
+                    r.request_focus();
+                    ui.horizontal(|ui| {
+                        if ui.button(tr("OK")).clicked() || (r.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter))) {
+                            done = Some(name.clone());
+                        }
+                        if ui.button(tr("Cancel")).clicked() {
+                            cancel = true;
+                        }
+                    });
                 });
-            });
             if let Some(n) = done.filter(|n| !n.trim().is_empty()) {
                 self.design.name = n.trim().to_string();
                 self.name_dialog = None;

@@ -20,11 +20,7 @@ pub fn connect(cfg: &ConnectionConfig) -> Result<Box<dyn Driver>> {
     if cfg.kind == DbKind::Sqlite {
         return Ok(Box::new(SqliteDriver::open(&cfg.path)?));
     }
-    let tunnel = if cfg.ssh.enabled {
-        Some(SshTunnel::open(&cfg.ssh, &cfg.host, cfg.port).context(tr("could not open the SSH tunnel"))?)
-    } else {
-        None
-    };
+    let tunnel = if cfg.ssh.enabled { Some(SshTunnel::open(&cfg.ssh, &cfg.host, cfg.port).context(tr("could not open the SSH tunnel"))?) } else { None };
     let (host, port) = match &tunnel {
         Some(t) => ("127.0.0.1".to_string(), t.local_port),
         None => (cfg.host.clone(), cfg.port),
@@ -87,9 +83,7 @@ fn connect_mysql(cfg: &ConnectionConfig, host: &str, port: u16) -> Result<MysqlD
         .db_name(Some(cfg.database.clone()).filter(|s| !s.is_empty()))
         .tcp_connect_timeout(Some(TIMEOUT));
     if cfg.ssl.enabled {
-        let mut ssl = mysql::SslOpts::default()
-            .with_danger_accept_invalid_certs(!cfg.ssl.verify)
-            .with_danger_skip_domain_validation(!cfg.ssl.verify);
+        let mut ssl = mysql::SslOpts::default().with_danger_accept_invalid_certs(!cfg.ssl.verify).with_danger_skip_domain_validation(!cfg.ssl.verify);
         if !cfg.ssl.ca_path.is_empty() {
             ssl = ssl.with_root_cert_path(Some(std::path::PathBuf::from(&cfg.ssl.ca_path)));
         }
@@ -129,10 +123,7 @@ pub struct SshTunnel {
 
 impl SshTunnel {
     pub fn open(ssh: &SshConfig, target_host: &str, target_port: u16) -> Result<Self> {
-        let addr = (ssh.host.as_str(), ssh.port)
-            .to_socket_addrs()?
-            .next()
-            .ok_or_else(|| anyhow!(trf!("could not resolve {host}", host = ssh.host)))?;
+        let addr = (ssh.host.as_str(), ssh.port).to_socket_addrs()?.next().ok_or_else(|| anyhow!(trf!("could not resolve {host}", host = ssh.host)))?;
         let tcp = TcpStream::connect_timeout(&addr, TIMEOUT)?;
         let mut sess = ssh2::Session::new()?;
         sess.set_tcp_stream(tcp);

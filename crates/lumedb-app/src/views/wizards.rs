@@ -150,7 +150,9 @@ impl View for ExportWizard {
                 match &self.source {
                     ExportSource::Result { result, kind } => {
                         opts.dialect = *kind;
-                        self.result = Some(transfer::export(result, &path, &opts).map(|_| trf!("{n} rows exported", n = result.rows.len())).map_err(|e| format!("{e:#}")));
+                        self.result = Some(
+                            transfer::export(result, &path, &opts).map(|_| trf!("{n} rows exported", n = result.rows.len())).map_err(|e| format!("{e:#}")),
+                        );
                     }
                     ExportSource::Tables { loc, all } => {
                         let tables: Vec<String> = all.iter().filter(|(_, on)| *on).map(|(t, _)| t.clone()).collect();
@@ -338,11 +340,14 @@ impl View for ImportWizard {
                 let before = (self.new_table, self.target.clone());
                 ui.radio_value(&mut self.new_table, false, tr("Existing table"));
                 ui.add_enabled_ui(!self.new_table, |ui| {
-                    egui::ComboBox::from_id_salt("imp_target").selected_text(if self.new_table { "" } else { self.target.as_str() }).width(180.0).show_ui(ui, |ui| {
-                        for t in &self.tables {
-                            ui.selectable_value(&mut self.target, t.clone(), t);
-                        }
-                    });
+                    egui::ComboBox::from_id_salt("imp_target").selected_text(if self.new_table { "" } else { self.target.as_str() }).width(180.0).show_ui(
+                        ui,
+                        |ui| {
+                            for t in &self.tables {
+                                ui.selectable_value(&mut self.target, t.clone(), t);
+                            }
+                        },
+                    );
                 });
                 ui.radio_value(&mut self.new_table, true, tr("New table:"));
                 ui.add_enabled(self.new_table, egui::TextEdit::singleline(&mut self.target).desired_width(140.0));
@@ -379,12 +384,15 @@ impl View for ImportWizard {
                                     ui.add(egui::TextEdit::singleline(v).desired_width(200.0));
                                 }
                             } else if let Some(m) = self.mapping.get_mut(i) {
-                                egui::ComboBox::from_id_salt(("imp_m", i)).selected_text(m.clone().unwrap_or_else(|| tr("(skip)").into())).width(200.0).show_ui(ui, |ui| {
-                                    ui.selectable_value(m, None, tr("(skip)"));
-                                    for t in &self.target_columns {
-                                        ui.selectable_value(m, Some(t.clone()), t);
-                                    }
-                                });
+                                egui::ComboBox::from_id_salt(("imp_m", i))
+                                    .selected_text(m.clone().unwrap_or_else(|| tr("(skip)").into()))
+                                    .width(200.0)
+                                    .show_ui(ui, |ui| {
+                                        ui.selectable_value(m, None, tr("(skip)"));
+                                        for t in &self.target_columns {
+                                            ui.selectable_value(m, Some(t.clone()), t);
+                                        }
+                                    });
                             }
                             ui.end_row();
                         }
@@ -407,7 +415,8 @@ impl View for ImportWizard {
         ui.separator();
         done_line(ui, &self.result);
         ui.horizontal(|ui| {
-            let ready = matches!(self.preview, Some(Ok(_))) && !self.target.trim().is_empty() && self.run_id.is_none() && self.mapping.iter().any(|m| m.is_some());
+            let ready =
+                matches!(self.preview, Some(Ok(_))) && !self.target.trim().is_empty() && self.run_id.is_none() && self.mapping.iter().any(|m| m.is_some());
             if ui.add_enabled(ready, egui::Button::new(RichText::new(format!("{}  {}", icon::PLAY, tr("Import"))).strong())).clicked() {
                 self.options.delimiter = self.delimiter.bytes().next().unwrap_or(b',');
                 let (path, opts, schema, table) = (PathBuf::from(&self.path), self.options.clone(), self.loc.schema.clone(), self.target.trim().to_string());
@@ -538,7 +547,10 @@ impl View for DumpWindow {
         });
         done_line(ui, &self.result);
         ui.horizontal(|ui| {
-            if ui.add_enabled(!self.path.is_empty() && self.id.is_none(), egui::Button::new(RichText::new(format!("{}  {}", icon::PLAY, tr("Start"))).strong())).clicked() {
+            if ui
+                .add_enabled(!self.path.is_empty() && self.id.is_none(), egui::Button::new(RichText::new(format!("{}  {}", icon::PLAY, tr("Start"))).strong()))
+                .clicked()
+            {
                 let (schema, objects, options, path) = (self.loc.schema.clone(), self.objects.clone(), self.options, self.path.clone());
                 self.result = None;
                 self.id = Some(cx.run(&self.loc, move |d, p| {
@@ -626,7 +638,10 @@ impl View for RunSqlFileWindow {
             None => {}
         }
         ui.horizontal(|ui| {
-            if ui.add_enabled(!self.path.is_empty() && self.id.is_none(), egui::Button::new(RichText::new(format!("{}  {}", icon::PLAY, tr("Start"))).strong())).clicked() {
+            if ui
+                .add_enabled(!self.path.is_empty() && self.id.is_none(), egui::Button::new(RichText::new(format!("{}  {}", icon::PLAY, tr("Start"))).strong()))
+                .clicked()
+            {
                 let (path, cont, schema) = (self.path.clone(), self.continue_on_error, self.loc.schema.clone());
                 self.result = None;
                 self.id = Some(cx.run(&self.loc, move |d, p| {
@@ -704,10 +719,7 @@ impl Endpoint {
     }
 
     fn new(configs: &[ConnectionConfig], loc: Option<&Loc>, cx_names: &[(u64, String)]) -> Self {
-        let conn = loc
-            .and_then(|l| cx_names.iter().find(|(k, _)| *k == l.conn))
-            .and_then(|(_, n)| configs.iter().position(|c| &c.name == n))
-            .unwrap_or(0);
+        let conn = loc.and_then(|l| cx_names.iter().find(|(k, _)| *k == l.conn)).and_then(|(_, n)| configs.iter().position(|c| &c.name == n)).unwrap_or(0);
         Self {
             conn,
             db: loc.map(|l| l.db.clone()).unwrap_or_default(),
@@ -905,7 +917,14 @@ impl View for TransferWizard {
                 }
                 Some(Ok(v)) => {
                     let total: u64 = v.iter().map(|(_, n)| n).sum();
-                    ui.label(RichText::new(format!("{}  {}", icon::CHECK_CIRCLE, trf!("{tables} tables and {total} rows transferred", tables = v.len(), total = total))).color(theme::GREEN));
+                    ui.label(
+                        RichText::new(format!(
+                            "{}  {}",
+                            icon::CHECK_CIRCLE,
+                            trf!("{tables} tables and {total} rows transferred", tables = v.len(), total = total)
+                        ))
+                        .color(theme::GREEN),
+                    );
                 }
                 Some(Err(e)) => {
                     crate::notice::error_banner(ui, e);
@@ -914,7 +933,10 @@ impl View for TransferWizard {
         }
         ui.horizontal(|ui| {
             let running = self.job.as_ref().is_some_and(|j| j.result.is_none());
-            if ui.add_enabled(!running && self.tables.iter().any(|t| t.1), egui::Button::new(RichText::new(format!("{}  {}", icon::PLAY, tr("Start"))).strong())).clicked() {
+            if ui
+                .add_enabled(!running && self.tables.iter().any(|t| t.1), egui::Button::new(RichText::new(format!("{}  {}", icon::PLAY, tr("Start"))).strong()))
+                .clicked()
+            {
                 let (src, dst) = (self.src.clone().unwrap(), self.dst.clone().unwrap());
                 let (Some(sc), Some(dc)) = (src.config(&self.configs), dst.config(&self.configs)) else { return };
                 let tables: Vec<String> = self.tables.iter().filter(|t| t.1).map(|t| t.0.clone()).collect();
@@ -939,12 +961,15 @@ impl View for TransferWizard {
 
 // ---------------------------------------------------------------- Data synchronization
 
+/// Data comparison of one table: its name and the differences (or the error).
+type TableDiff = (String, Result<sync::DataDiff, String>);
+
 pub struct DataSyncWizard {
     configs: Vec<ConnectionConfig>,
     loc: Option<Loc>,
     src: Option<Endpoint>,
     dst: Option<Endpoint>,
-    compare: Option<Background<Vec<(String, Result<sync::DataDiff, String>)>>>,
+    compare: Option<Background<Vec<TableDiff>>>,
     diffs: Vec<(String, Result<sync::DataDiff, String>, bool)>,
     preview: Option<usize>,
     apply: Option<Background<usize>>,
@@ -1066,9 +1091,16 @@ impl View for DataSyncWizard {
         }
         ui.separator();
         ui.horizontal(|ui| {
-            let stmts: Vec<String> = self.diffs.iter().filter(|(_, _, on)| *on).filter_map(|(_, d, _)| d.as_ref().ok()).flat_map(|d| d.statements.clone()).collect();
+            let stmts: Vec<String> =
+                self.diffs.iter().filter(|(_, _, on)| *on).filter_map(|(_, d, _)| d.as_ref().ok()).flat_map(|d| d.statements.clone()).collect();
             let running = self.apply.as_ref().is_some_and(|a| a.result.is_none());
-            if ui.add_enabled(!stmts.is_empty() && !running, egui::Button::new(RichText::new(format!("{}  {}", icon::PLAY, trf!("Synchronize ({n} changes)", n = stmts.len()))).strong())).clicked() {
+            if ui
+                .add_enabled(
+                    !stmts.is_empty() && !running,
+                    egui::Button::new(RichText::new(format!("{}  {}", icon::PLAY, trf!("Synchronize ({n} changes)", n = stmts.len()))).strong()),
+                )
+                .clicked()
+            {
                 let dst = self.dst.clone().unwrap();
                 let Some(dc) = dst.config(&self.configs) else { return };
                 self.apply = Some(Background::spawn(&cx.egui, move |report| {

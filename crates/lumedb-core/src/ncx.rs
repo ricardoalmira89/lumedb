@@ -5,7 +5,7 @@
 
 use std::collections::HashSet;
 
-use aes::cipher::{block_padding::Pkcs7, BlockDecryptMut, BlockEncrypt, BlockDecrypt, BlockEncryptMut, KeyInit, KeyIvInit};
+use aes::cipher::{block_padding::Pkcs7, BlockDecrypt, BlockDecryptMut, BlockEncrypt, BlockEncryptMut, KeyInit, KeyIvInit};
 use anyhow::{anyhow, Context, Result};
 use sha1::{Digest, Sha1};
 
@@ -112,15 +112,13 @@ pub fn decrypt_password(hex_str: &str) -> Result<String> {
 }
 
 fn decrypt_v12(data: &[u8]) -> Result<String> {
-    let plain = cbc::Decryptor::<aes::Aes128>::new(AES_KEY.into(), AES_IV.into())
-        .decrypt_padded_vec_mut::<Pkcs7>(data)
-        .map_err(|_| anyhow!(tr("invalid padding")))?;
+    let plain =
+        cbc::Decryptor::<aes::Aes128>::new(AES_KEY.into(), AES_IV.into()).decrypt_padded_vec_mut::<Pkcs7>(data).map_err(|_| anyhow!(tr("invalid padding")))?;
     Ok(String::from_utf8(plain)?)
 }
 
 pub fn encrypt_v12(plain: &str) -> String {
-    let data = cbc::Encryptor::<aes::Aes128>::new(AES_KEY.into(), AES_IV.into())
-        .encrypt_padded_vec_mut::<Pkcs7>(plain.as_bytes());
+    let data = cbc::Encryptor::<aes::Aes128>::new(AES_KEY.into(), AES_IV.into()).encrypt_padded_vec_mut::<Pkcs7>(plain.as_bytes());
     hex::encode_upper(data)
 }
 

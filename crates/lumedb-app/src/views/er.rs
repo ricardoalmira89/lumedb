@@ -49,7 +49,12 @@ pub enum ErEvent {
     NewTable,
     Refresh,
     /// Foreign key drawn with the "Relation" tool.
-    NewRelation { table: String, column: String, ref_table: String, ref_column: String },
+    NewRelation {
+        table: String,
+        column: String,
+        ref_table: String,
+        ref_column: String,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -128,10 +133,8 @@ impl Default for ErCanvas {
 
 /// File with the positions of a schema (shared by Model and Objects).
 pub fn layout_path(conn_name: &str, loc: &Loc) -> Option<PathBuf> {
-    let name: String = format!("{conn_name}_{}_{}", loc.db, loc.schema)
-        .chars()
-        .map(|c| if c.is_alphanumeric() || c == '_' || c == '-' { c } else { '_' })
-        .collect();
+    let name: String =
+        format!("{conn_name}_{}_{}", loc.db, loc.schema).chars().map(|c| if c.is_alphanumeric() || c == '_' || c == '-' { c } else { '_' }).collect();
     store::models_dir().ok().map(|d| d.join(format!("{name}.json")))
 }
 
@@ -214,7 +217,9 @@ impl ErCanvas {
             // New format {x, y, color} or old [x, y].
             let (x, y, color) = match &v {
                 serde_json::Value::Array(a) => (a.first().and_then(|n| n.as_f64()), a.get(1).and_then(|n| n.as_f64()), None),
-                serde_json::Value::Object(o) => (o.get("x").and_then(|n| n.as_f64()), o.get("y").and_then(|n| n.as_f64()), o.get("color").and_then(|c| c.as_str())),
+                serde_json::Value::Object(o) => {
+                    (o.get("x").and_then(|n| n.as_f64()), o.get("y").and_then(|n| n.as_f64()), o.get("color").and_then(|c| c.as_str()))
+                }
                 _ => (None, None, None),
             };
             if let (Some(x), Some(y)) = (x, y) {
@@ -393,9 +398,8 @@ impl ErCanvas {
                 layers[layer[&m]].push(m);
             }
             // Barycenter: several forward and backward passes to reduce crossings.
-            let rank = |layers: &Vec<Vec<usize>>| -> HashMap<usize, f32> {
-                layers.iter().flat_map(|l| l.iter().enumerate().map(|(i, &v)| (v, i as f32))).collect()
-            };
+            let rank =
+                |layers: &Vec<Vec<usize>>| -> HashMap<usize, f32> { layers.iter().flat_map(|l| l.iter().enumerate().map(|(i, &v)| (v, i as f32))).collect() };
             for pass in 0..8 {
                 let r = rank(&layers);
                 let order: Vec<usize> = if pass % 2 == 0 { (1..depth).collect() } else { (0..depth.saturating_sub(1)).rev().collect() };
@@ -430,7 +434,7 @@ impl ErCanvas {
             blocks.push((placed, Vec2::new(x - gap_x, tallest)));
         }
         // Large groups first, placed in rows.
-        blocks.sort_by(|a, b| b.0.len().cmp(&a.0.len()));
+        blocks.sort_by_key(|b| std::cmp::Reverse(b.0.len()));
         let max_row = 2600.0;
         let (mut cx, mut cy, mut row_h) = (0.0f32, 0.0f32, 0.0f32);
         for (placed, size) in blocks {
@@ -484,16 +488,16 @@ impl ErCanvas {
     /// Relations affected by moving the selected tables: their own and the ones they cover.
     fn affected_edges(&self) -> BTreeSet<usize> {
         let es = edges(&self.tables);
-        let moved: Vec<Rect> = self.tables.iter().filter(|t| self.selected.contains(&t.name)).filter_map(|t| self.world_rect(t)).map(|r| r.expand(GRID)).collect();
+        let moved: Vec<Rect> =
+            self.tables.iter().filter(|t| self.selected.contains(&t.name)).filter_map(|t| self.world_rect(t)).map(|r| r.expand(GRID)).collect();
         let mut out = BTreeSet::new();
         for (k, &(a, b)) in es.iter().enumerate() {
             if self.selected.contains(&self.tables[a].name) || self.selected.contains(&self.tables[b].name) {
                 out.insert(k);
                 continue;
             }
-            let crosses = self.routes.get(k).is_some_and(|r| {
-                r.windows(2).any(|w| moved.iter().any(|m| m.intersects(Rect::from_two_pos(w[0], w[1]).expand(0.5))))
-            });
+            let crosses =
+                self.routes.get(k).is_some_and(|r| r.windows(2).any(|w| moved.iter().any(|m| m.intersects(Rect::from_two_pos(w[0], w[1]).expand(0.5)))));
             if crosses {
                 out.insert(k);
             }
@@ -722,7 +726,9 @@ impl ErCanvas {
             let w = t
                 .columns
                 .iter()
-                .map(|c| ui.fonts(|f| f.layout_no_wrap(format!("{}: {}", c.name, c.data_type), FontId::proportional(12.0), Color32::WHITE).size().x) + 24.0 + PAD)
+                .map(|c| {
+                    ui.fonts(|f| f.layout_no_wrap(format!("{}: {}", c.name, c.data_type), FontId::proportional(12.0), Color32::WHITE).size().x) + 24.0 + PAD
+                })
                 .fold(title, f32::max)
                 .clamp(MIN_W, MAX_W);
             self.widths.insert(t.name.clone(), (w / GRID).ceil() * GRID);
@@ -789,18 +795,12 @@ impl ErCanvas {
 
         let origin = rect.min + self.pan;
         let to_screen = |p: Pos2| origin + p.to_vec2() * z;
-        let boxes: BTreeMap<String, Rect> = self
-            .tables
-            .iter()
-            .filter_map(|t| self.world_rect(t).map(|r| (t.name.clone(), Rect::from_min_max(to_screen(r.min), to_screen(r.max)))))
-            .collect();
+        let boxes: BTreeMap<String, Rect> =
+            self.tables.iter().filter_map(|t| self.world_rect(t).map(|r| (t.name.clone(), Rect::from_min_max(to_screen(r.min), to_screen(r.max))))).collect();
 
         // Table under the pointer, with an intent delay so sweeping the mouse past does not flicker.
-        let raw_hover: Option<String> = if self.drag.is_none() {
-            resp.hover_pos().and_then(|p| boxes.iter().rev().find(|(_, r)| r.contains(p)).map(|(n, _)| n.clone()))
-        } else {
-            None
-        };
+        let raw_hover: Option<String> =
+            if self.drag.is_none() { resp.hover_pos().and_then(|p| boxes.iter().rev().find(|(_, r)| r.contains(p)).map(|(n, _)| n.clone())) } else { None };
         let now = ui.input(|i| i.time);
         if raw_hover != self.hover_target {
             self.hover_target = raw_hover;
@@ -947,8 +947,16 @@ impl ErCanvas {
                 }
                 let mut job = egui::text::LayoutJob::default();
                 let alpha = 1.0 - 0.55 * t_dim;
-                job.append(&c.name, 0.0, egui::TextFormat { font_id: FontId::proportional(12.0 * z), color: name_color.gamma_multiply(alpha), ..Default::default() });
-                job.append(&format!(": {}", c.data_type), 0.0, egui::TextFormat { font_id: FontId::proportional(12.0 * z), color: type_color.gamma_multiply(alpha), ..Default::default() });
+                job.append(
+                    &c.name,
+                    0.0,
+                    egui::TextFormat { font_id: FontId::proportional(12.0 * z), color: name_color.gamma_multiply(alpha), ..Default::default() },
+                );
+                job.append(
+                    &format!(": {}", c.data_type),
+                    0.0,
+                    egui::TextFormat { font_id: FontId::proportional(12.0 * z), color: type_color.gamma_multiply(alpha), ..Default::default() },
+                );
                 job.wrap = egui::text::TextWrapping::truncate_at_width(r.width() - 30.0 * z);
                 let galley = ui.fonts(|f| f.layout_job(job));
                 painter.galley(Pos2::new(r.left() + 24.0 * z, y - galley.size().y / 2.0), galley, name_color);
@@ -967,11 +975,7 @@ impl ErCanvas {
             let len = 10.0 * z.max(0.6);
             let half = 5.0 * z.max(0.6);
             let base = p3 + Vec2::new(d3 * len, 0.0);
-            painter.add(egui::Shape::convex_polygon(
-                vec![p3, base + Vec2::new(0.0, -half), base + Vec2::new(0.0, half)],
-                stroke.color,
-                Stroke::NONE,
-            ));
+            painter.add(egui::Shape::convex_polygon(vec![p3, base + Vec2::new(0.0, -half), base + Vec2::new(0.0, half)], stroke.color, Stroke::NONE));
         }
         if self.tables.is_empty() {
             painter.text(rect.center(), Align2::CENTER_CENTER, tr("No tables"), FontId::proportional(14.0), theme::MUTED);
@@ -1216,7 +1220,12 @@ impl ErCanvas {
         let mini = Rect::from_min_size(rect.right_bottom() - Vec2::new(196.0, 162.0), Vec2::new(184.0, 120.0));
         let controls = Rect::from_min_size(Pos2::new(mini.left(), mini.bottom() + 6.0), Vec2::new(mini.width(), 24.0));
         let panel = mini.union(controls).expand(6.0);
-        painter.rect(panel, 4.0, if dark { Color32::from_rgb(0x2B, 0x2D, 0x30) } else { Color32::from_rgb(0xF4, 0xF5, 0xF7) }, Stroke::new(1.0, theme::border(ui.ctx())));
+        painter.rect(
+            panel,
+            4.0,
+            if dark { Color32::from_rgb(0x2B, 0x2D, 0x30) } else { Color32::from_rgb(0xF4, 0xF5, 0xF7) },
+            Stroke::new(1.0, theme::border(ui.ctx())),
+        );
         painter.rect(mini, 0.0, if dark { Color32::from_rgb(0x1E, 0x1F, 0x22) } else { Color32::WHITE }, Stroke::new(1.0, theme::border(ui.ctx())));
         let view = Rect::from_min_max(((rect.min - origin) / z).to_pos2(), ((rect.max - origin) / z).to_pos2());
         let world = self.bounds().unwrap_or(view).union(view).expand(20.0);
@@ -1351,7 +1360,13 @@ mod tests {
             columns: (0..4).map(|i| ColumnDef { name: format!("c{i}"), data_type: "int".into(), ..Default::default() }).collect(),
             foreign_keys: refs
                 .iter()
-                .map(|r| ForeignKeyDef { name: format!("fk_{name}_{r}"), columns: vec!["c1".into()], ref_table: r.to_string(), ref_columns: vec!["c0".into()], ..Default::default() })
+                .map(|r| ForeignKeyDef {
+                    name: format!("fk_{name}_{r}"),
+                    columns: vec!["c1".into()],
+                    ref_table: r.to_string(),
+                    ref_columns: vec!["c0".into()],
+                    ..Default::default()
+                })
                 .collect(),
             ..Default::default()
         }

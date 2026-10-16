@@ -64,15 +64,57 @@ pub const FK_ACTIONS: [&str; 5] = ["NO ACTION", "RESTRICT", "CASCADE", "SET NULL
 pub fn type_suggestions(kind: DbKind) -> &'static [&'static str] {
     match kind {
         DbKind::Mysql => &[
-            "int", "bigint", "tinyint", "smallint", "mediumint", "decimal(10,2)", "float", "double", "varchar(255)",
-            "char(1)", "text", "mediumtext", "longtext", "date", "datetime", "timestamp", "time", "year", "tinyint(1)",
-            "json", "blob", "longblob", "varbinary(255)", "enum('a','b')", "set('a','b')",
+            "int",
+            "bigint",
+            "tinyint",
+            "smallint",
+            "mediumint",
+            "decimal(10,2)",
+            "float",
+            "double",
+            "varchar(255)",
+            "char(1)",
+            "text",
+            "mediumtext",
+            "longtext",
+            "date",
+            "datetime",
+            "timestamp",
+            "time",
+            "year",
+            "tinyint(1)",
+            "json",
+            "blob",
+            "longblob",
+            "varbinary(255)",
+            "enum('a','b')",
+            "set('a','b')",
         ],
         DbKind::Postgres => &[
-            "integer", "bigint", "smallint", "serial", "bigserial", "numeric(10,2)", "real", "double precision",
-            "character varying(255)", "character(1)", "text", "boolean", "date", "timestamp without time zone",
-            "timestamp with time zone", "time without time zone", "interval", "uuid", "json", "jsonb", "bytea", "inet",
-            "integer[]", "text[]",
+            "integer",
+            "bigint",
+            "smallint",
+            "serial",
+            "bigserial",
+            "numeric(10,2)",
+            "real",
+            "double precision",
+            "character varying(255)",
+            "character(1)",
+            "text",
+            "boolean",
+            "date",
+            "timestamp without time zone",
+            "timestamp with time zone",
+            "time without time zone",
+            "interval",
+            "uuid",
+            "json",
+            "jsonb",
+            "bytea",
+            "inet",
+            "integer[]",
+            "text[]",
         ],
         DbKind::Sqlite => &["INTEGER", "REAL", "TEXT", "BLOB", "NUMERIC"],
     }
@@ -159,11 +201,7 @@ fn fk_sql(kind: DbKind, fk: &ForeignKeyDef) -> String {
     if !fk.name.is_empty() && kind != DbKind::Sqlite {
         out.push_str(&format!("CONSTRAINT {} ", kind.quote_one(&fk.name)));
     }
-    let target = if kind == DbKind::Sqlite || fk.ref_schema.is_empty() {
-        kind.quote_one(&fk.ref_table)
-    } else {
-        kind.qualified(&fk.ref_schema, &fk.ref_table)
-    };
+    let target = if kind == DbKind::Sqlite || fk.ref_schema.is_empty() { kind.quote_one(&fk.ref_table) } else { kind.qualified(&fk.ref_schema, &fk.ref_table) };
     out.push_str(&format!("FOREIGN KEY ({}) REFERENCES {target} ({})", col_list(kind, &fk.columns), col_list(kind, &fk.ref_columns)));
     for (what, action) in [("DELETE", &fk.on_delete), ("UPDATE", &fk.on_update)] {
         if !action.is_empty() && !action.eq_ignore_ascii_case("NO ACTION") {
@@ -182,11 +220,7 @@ fn index_sql(kind: DbKind, t: &TableDesign, i: &IndexDef) -> String {
             format!("CREATE {unique}INDEX {} ON {table} USING {} ({cols})", kind.quote_one(&i.name), i.method)
         }
         // In SQLite the index lives in the table's schema.
-        DbKind::Sqlite => format!(
-            "CREATE {unique}INDEX {} ON {} ({cols})",
-            kind.qualified(&t.schema, &i.name),
-            kind.quote_one(&t.name)
-        ),
+        DbKind::Sqlite => format!("CREATE {unique}INDEX {} ON {} ({cols})", kind.qualified(&t.schema, &i.name), kind.quote_one(&t.name)),
         _ => format!("CREATE {unique}INDEX {} ON {table} ({cols})", kind.quote_one(&i.name)),
     }
 }
@@ -209,19 +243,11 @@ fn sqlite_inline_pk(t: &TableDesign) -> Option<&ColumnDef> {
 /// `CREATE TABLE` plus indexes and comments.
 pub fn create_table(kind: DbKind, t: &TableDesign) -> Vec<String> {
     let inline = if kind == DbKind::Sqlite { sqlite_inline_pk(t).map(|c| c.name.clone()) } else { None };
-    let mut lines: Vec<String> = t
-        .columns
-        .iter()
-        .map(|c| format!("  {}", column_sql(kind, c, inline.as_deref() == Some(&c.name))))
-        .collect();
+    let mut lines: Vec<String> = t.columns.iter().map(|c| format!("  {}", column_sql(kind, c, inline.as_deref() == Some(&c.name)))).collect();
     let pk = t.primary_key();
     if !pk.is_empty() && inline.is_none() {
         let pk: Vec<String> = pk.iter().map(|s| s.to_string()).collect();
-        let name = if kind == DbKind::Postgres && !t.pk_name.is_empty() {
-            format!("CONSTRAINT {} ", kind.quote_one(&t.pk_name))
-        } else {
-            String::new()
-        };
+        let name = if kind == DbKind::Postgres && !t.pk_name.is_empty() { format!("CONSTRAINT {} ", kind.quote_one(&t.pk_name)) } else { String::new() };
         lines.push(format!("  {name}PRIMARY KEY ({})", col_list(kind, &pk)));
     }
     for fk in &t.foreign_keys {
@@ -313,11 +339,7 @@ fn diff<'a>(old: &'a TableDesign, new: &'a TableDesign) -> Diff<'a> {
         .filter(|o| !new.indexes.iter().any(|n| n.original_name.as_ref() == Some(&o.name) && same_idx(o, n)))
         .filter(|o| o.original_name.is_some())
         .collect();
-    let added_idx = new
-        .indexes
-        .iter()
-        .filter(|n| !old.indexes.iter().any(|o| n.original_name.as_ref() == Some(&o.name) && same_idx(o, n)))
-        .collect();
+    let added_idx = new.indexes.iter().filter(|n| !old.indexes.iter().any(|o| n.original_name.as_ref() == Some(&o.name) && same_idx(o, n))).collect();
     let same_fk = |a: &ForeignKeyDef, b: &ForeignKeyDef| {
         let mut a = a.clone();
         let mut b = b.clone();
@@ -325,16 +347,8 @@ fn diff<'a>(old: &'a TableDesign, new: &'a TableDesign) -> Diff<'a> {
         b.original_name = None;
         a == b
     };
-    let dropped_fk = old
-        .foreign_keys
-        .iter()
-        .filter(|o| !new.foreign_keys.iter().any(|n| n.original_name.as_ref() == Some(&o.name) && same_fk(o, n)))
-        .collect();
-    let added_fk = new
-        .foreign_keys
-        .iter()
-        .filter(|n| !old.foreign_keys.iter().any(|o| n.original_name.as_ref() == Some(&o.name) && same_fk(o, n)))
-        .collect();
+    let dropped_fk = old.foreign_keys.iter().filter(|o| !new.foreign_keys.iter().any(|n| n.original_name.as_ref() == Some(&o.name) && same_fk(o, n))).collect();
+    let added_fk = new.foreign_keys.iter().filter(|n| !old.foreign_keys.iter().any(|o| n.original_name.as_ref() == Some(&o.name) && same_fk(o, n))).collect();
     Diff { dropped_cols, added_cols, changed_cols, pk_changed, dropped_idx, added_idx, dropped_fk, added_fk }
 }
 
@@ -509,8 +523,7 @@ fn alter_sqlite(old: &TableDesign, new: &TableDesign) -> Vec<String> {
     }
 
     // Native renames first (that way SQLite rewrites views and triggers)…
-    let renames: Vec<(String, String)> =
-        d.changed_cols.iter().filter(|(o, n)| o.name != n.name).map(|(o, n)| (o.name.clone(), n.name.clone())).collect();
+    let renames: Vec<(String, String)> = d.changed_cols.iter().filter(|(o, n)| o.name != n.name).map(|(o, n)| (o.name.clone(), n.name.clone())).collect();
     if !renames.is_empty() {
         let table = k.qualified(&old.schema, &old.name);
         for (from, to) in &renames {
@@ -537,8 +550,7 @@ fn alter_sqlite(old: &TableDesign, new: &TableDesign) -> Vec<String> {
     let mut staged = new.clone();
     staged.name = tmp.clone();
     staged.indexes.clear();
-    let copied: Vec<(&String, &String)> =
-        new.columns.iter().filter_map(|c| c.original_name.as_ref().map(|o| (&c.name, o))).collect();
+    let copied: Vec<(&String, &String)> = new.columns.iter().filter_map(|c| c.original_name.as_ref().map(|o| (&c.name, o))).collect();
     // legacy_alter_table stops the rename from validating views that point to the table.
     out.push("PRAGMA foreign_keys = OFF;".into());
     out.push("PRAGMA legacy_alter_table = ON;".into());

@@ -57,9 +57,7 @@ pub fn map_type(from: DbKind, to: DbKind, ty: &str) -> String {
         "year" => pick("smallint", "year", "INTEGER"),
         "json" | "jsonb" => pick("jsonb", "json", "TEXT"),
         "uuid" => pick("uuid", "char(36)", "TEXT"),
-        "blob" | "tinyblob" | "mediumblob" | "longblob" | "bytea" | "binary" | "varbinary" | "bit" => {
-            pick("bytea", "longblob", "BLOB")
-        }
+        "blob" | "tinyblob" | "mediumblob" | "longblob" | "bytea" | "binary" | "varbinary" | "bit" => pick("bytea", "longblob", "BLOB"),
         "enum" | "set" | "inet" | "cidr" | "macaddr" | "interval" => pick("text", "varchar(255)", "TEXT"),
         "" => pick("text", "longtext", "TEXT"),
         _ => pick("text", "longtext", "TEXT"),
@@ -115,13 +113,17 @@ fn convert(v: Value, src_type: &str, from: DbKind, to: DbKind) -> Value {
     }
     let t = src_type.to_lowercase();
     match v {
-        Value::Text(s) if from == DbKind::Postgres && t == "boolean" && to != DbKind::Postgres => {
-            Value::Number(if s == "t" { "1".into() } else { "0".into() })
-        }
-        Value::Text(s) if from == DbKind::Postgres && t == "bytea" && s.starts_with("\\x") => {
-            hex::decode(&s[2..]).map(Value::Bytes).unwrap_or(Value::Text(s))
-        }
-        Value::Text(s) if from == DbKind::Postgres && (t.starts_with("integer") || t.starts_with("bigint") || t.starts_with("smallint") || t.starts_with("numeric") || t == "real" || t == "double precision") => {
+        Value::Text(s) if from == DbKind::Postgres && t == "boolean" && to != DbKind::Postgres => Value::Number(if s == "t" { "1".into() } else { "0".into() }),
+        Value::Text(s) if from == DbKind::Postgres && t == "bytea" && s.starts_with("\\x") => hex::decode(&s[2..]).map(Value::Bytes).unwrap_or(Value::Text(s)),
+        Value::Text(s)
+            if from == DbKind::Postgres
+                && (t.starts_with("integer")
+                    || t.starts_with("bigint")
+                    || t.starts_with("smallint")
+                    || t.starts_with("numeric")
+                    || t == "real"
+                    || t == "double precision") =>
+        {
             Value::Number(s)
         }
         other => other,
@@ -257,13 +259,7 @@ fn as_alteration(target: &TableDesign, wanted: &TableDesign) -> TableDesign {
 }
 
 /// Compares the tables of two schemas and generates what is needed to make the target match the source.
-pub fn structure_diff(
-    src: &mut dyn Driver,
-    src_schema: &str,
-    dst: &mut dyn Driver,
-    dst_schema: &str,
-    drop_extra: bool,
-) -> Result<Vec<SyncItem>> {
+pub fn structure_diff(src: &mut dyn Driver, src_schema: &str, dst: &mut dyn Driver, dst_schema: &str, drop_extra: bool) -> Result<Vec<SyncItem>> {
     let (from, to) = (src.kind(), dst.kind());
     let tables = |d: &mut dyn Driver, s: &str| -> Result<Vec<String>> {
         Ok(meta::list_objects(d, s)?.into_iter().filter(|o| o.kind == meta::ObjectKind::Table).map(|o| o.name).collect())
@@ -285,11 +281,7 @@ pub fn structure_diff(
     }
     if drop_extra {
         for t in dst_tables.iter().filter(|t| !src_tables.contains(t)) {
-            out.push(SyncItem {
-                table: t.clone(),
-                action: SyncAction::Drop,
-                statements: vec![format!("DROP TABLE {};", to.qualified(dst_schema, t))],
-            });
+            out.push(SyncItem { table: t.clone(), action: SyncAction::Drop, statements: vec![format!("DROP TABLE {};", to.qualified(dst_schema, t))] });
         }
     }
     Ok(out)
@@ -330,13 +322,7 @@ pub struct DataDiff {
 }
 
 /// Compares a table by its primary key and generates INSERT/UPDATE/DELETE for the target.
-pub fn data_diff(
-    src: &mut dyn Driver,
-    src_schema: &str,
-    dst: &mut dyn Driver,
-    dst_schema: &str,
-    table: &str,
-) -> Result<DataDiff> {
+pub fn data_diff(src: &mut dyn Driver, src_schema: &str, dst: &mut dyn Driver, dst_schema: &str, table: &str) -> Result<DataDiff> {
     let (from, to) = (src.kind(), dst.kind());
     let design = meta::table_design(src, src_schema, table)?;
     let pk: Vec<String> = design.primary_key().iter().map(|s| s.to_string()).collect();

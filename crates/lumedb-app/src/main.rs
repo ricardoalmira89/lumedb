@@ -15,11 +15,7 @@ fn main() -> eframe::Result<()> {
         std::process::exit(run_job(&name));
     }
     let options = eframe::NativeOptions {
-        viewport: eframe::egui::ViewportBuilder::default()
-            .with_title("LumeDB")
-            .with_app_id("lumedb")
-            .with_inner_size([1360.0, 840.0])
-            .with_icon(app_icon()),
+        viewport: eframe::egui::ViewportBuilder::default().with_title("LumeDB").with_app_id("lumedb").with_inner_size([1360.0, 840.0]).with_icon(app_icon()),
         ..Default::default()
     };
     eframe::run_native("LumeDB", options, Box::new(|cc| Ok(Box::new(app::LumeDbApp::new(cc)))))

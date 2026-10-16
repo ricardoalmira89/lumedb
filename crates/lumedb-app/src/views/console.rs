@@ -26,11 +26,8 @@ impl ConsoleTab {
 
 /// Bordered text table, in the style of command-line clients.
 pub fn ascii_table(r: &QueryResult) -> String {
-    let cells: Vec<Vec<String>> = r
-        .rows
-        .iter()
-        .map(|row| row.iter().map(|v| v.display().map(|s| s.replace('\n', " ")).unwrap_or_else(|| "NULL".into())).collect())
-        .collect();
+    let cells: Vec<Vec<String>> =
+        r.rows.iter().map(|row| row.iter().map(|v| v.display().map(|s| s.replace('\n', " ")).unwrap_or_else(|| "NULL".into())).collect()).collect();
     let mut widths: Vec<usize> = r.columns.iter().map(|c| c.chars().count()).collect();
     for row in &cells {
         for (i, c) in row.iter().enumerate() {
@@ -79,13 +76,8 @@ impl View for ConsoleTab {
             ui.horizontal(|ui| {
                 let prompt = format!("{}>", self.loc.schema);
                 ui.label(RichText::new(prompt).monospace().color(theme::GREEN));
-                let r = ui.add(
-                    egui::TextEdit::singleline(&mut self.input)
-                        .font(egui::TextStyle::Monospace)
-                        .text_color(fg)
-                        .frame(false)
-                        .desired_width(f32::INFINITY),
-                );
+                let r = ui
+                    .add(egui::TextEdit::singleline(&mut self.input).font(egui::TextStyle::Monospace).text_color(fg).frame(false).desired_width(f32::INFINITY));
                 if self.pending.is_none() {
                     r.request_focus();
                 }

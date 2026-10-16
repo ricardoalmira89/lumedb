@@ -122,7 +122,11 @@ impl View for ConnectionDialog {
                         });
                         ui.end_row();
                         ui.label(if c.kind == DbKind::Postgres { tr("Initial database:") } else { tr("Database:") });
-                        ui.add(egui::TextEdit::singleline(&mut c.database).desired_width(w).hint_text(if c.kind == DbKind::Postgres { "postgres" } else { tr("(all)") }));
+                        ui.add(egui::TextEdit::singleline(&mut c.database).desired_width(w).hint_text(if c.kind == DbKind::Postgres {
+                            "postgres"
+                        } else {
+                            tr("(all)")
+                        }));
                         ui.end_row();
                     }
                     ui.label(tr("Group:"));
@@ -224,7 +228,7 @@ impl View for ConnectionDialog {
                 }
                 let ok = !self.cfg.name.trim().is_empty();
                 if ui.add_enabled(ok, egui::Button::new(RichText::new(tr("OK")).strong())).clicked() {
-                    cx.act(Action::SaveConnection(self.key, self.cfg.clone()));
+                    cx.act(Action::SaveConnection(self.key, Box::new(self.cfg.clone())));
                     cx.close();
                 }
             });

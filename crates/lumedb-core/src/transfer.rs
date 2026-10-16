@@ -76,14 +76,7 @@ pub struct ExportOptions {
 
 impl Default for ExportOptions {
     fn default() -> Self {
-        Self {
-            format: ExportFormat::Csv,
-            include_header: true,
-            delimiter: b',',
-            null_text: String::new(),
-            table_name: "table".into(),
-            dialect: DbKind::Mysql,
-        }
+        Self { format: ExportFormat::Csv, include_header: true, delimiter: b',', null_text: String::new(), table_name: "table".into(), dialect: DbKind::Mysql }
     }
 }
 
@@ -133,8 +126,7 @@ pub fn write_export(r: &QueryResult, w: &mut dyn Write, o: &ExportOptions) -> Re
                 .rows
                 .iter()
                 .map(|row| {
-                    let obj: serde_json::Map<String, serde_json::Value> =
-                        r.columns.iter().cloned().zip(row.iter().map(json_value)).collect();
+                    let obj: serde_json::Map<String, serde_json::Value> = r.columns.iter().cloned().zip(row.iter().map(json_value)).collect();
                     serde_json::Value::Object(obj)
                 })
                 .collect();
@@ -246,22 +238,12 @@ fn export_xlsx(r: &QueryResult, path: &Path, o: &ExportOptions) -> Result<()> {
 }
 
 /// Multi-row `INSERT`s in batches of `batch` rows.
-pub fn insert_statements(
-    kind: DbKind,
-    schema: &str,
-    table: &str,
-    columns: &[String],
-    rows: &[Vec<Value>],
-    batch: usize,
-) -> Vec<String> {
+pub fn insert_statements(kind: DbKind, schema: &str, table: &str, columns: &[String], rows: &[Vec<Value>], batch: usize) -> Vec<String> {
     let t = kind.qualified(schema, table);
     let cols = columns.iter().map(|c| kind.quote_one(c)).collect::<Vec<_>>().join(", ");
     rows.chunks(batch.max(1))
         .map(|chunk| {
-            let values: Vec<String> = chunk
-                .iter()
-                .map(|r| format!("({})", r.iter().map(|v| v.sql_literal(kind)).collect::<Vec<_>>().join(", ")))
-                .collect();
+            let values: Vec<String> = chunk.iter().map(|r| format!("({})", r.iter().map(|v| v.sql_literal(kind)).collect::<Vec<_>>().join(", "))).collect();
             format!("INSERT INTO {t} ({cols}) VALUES\n{}", values.join(",\n"))
         })
         .collect()

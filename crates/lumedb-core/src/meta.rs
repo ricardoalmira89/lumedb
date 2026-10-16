@@ -24,15 +24,8 @@ pub enum ObjectKind {
 }
 
 impl ObjectKind {
-    pub const ALL: [ObjectKind; 7] = [
-        ObjectKind::Table,
-        ObjectKind::View,
-        ObjectKind::Function,
-        ObjectKind::Procedure,
-        ObjectKind::Trigger,
-        ObjectKind::Sequence,
-        ObjectKind::Event,
-    ];
+    pub const ALL: [ObjectKind; 7] =
+        [ObjectKind::Table, ObjectKind::View, ObjectKind::Function, ObjectKind::Procedure, ObjectKind::Trigger, ObjectKind::Sequence, ObjectKind::Event];
 
     fn parse(s: &str) -> Self {
         match s.to_ascii_lowercase().as_str() {
@@ -190,10 +183,7 @@ pub fn list_objects(d: &mut dyn Driver, schema: &str) -> Result<Vec<DbObject>> {
              ORDER BY 2, 1"
         ),
     };
-    Ok(query(d, &sql)?
-        .iter()
-        .map(|r| DbObject { schema: schema.into(), name: s(r, 0), kind: ObjectKind::parse(&s(r, 1)), detail: s(r, 2) })
-        .collect())
+    Ok(query(d, &sql)?.iter().map(|r| DbObject { schema: schema.into(), name: s(r, 0), kind: ObjectKind::parse(&s(r, 1)), detail: s(r, 2) }).collect())
 }
 
 /// Data for the object list (rows, size, engine…). SQLite has no cheap statistics.
@@ -212,10 +202,7 @@ pub fn table_stats(d: &mut dyn Driver, schema: &str) -> Result<Vec<TableStats>> 
                      WHERE n.nspname = {sc} AND c.relkind IN ('r','p')"
                 ),
             )?;
-            Ok(rows
-                .iter()
-                .map(|r| TableStats { name: s(r, 0), rows: num(r, 1), data_size: num(r, 2), comment: s(r, 3), ..Default::default() })
-                .collect())
+            Ok(rows.iter().map(|r| TableStats { name: s(r, 0), rows: num(r, 1), data_size: num(r, 2), comment: s(r, 3), ..Default::default() }).collect())
         }
         DbKind::Mysql => {
             let rows = query(
@@ -393,13 +380,7 @@ pub fn indexes(d: &mut dyn Driver, schema: &str, table: &str) -> Result<Vec<Inde
             )?;
             Ok(rows
                 .into_iter()
-                .map(|r| IndexDef {
-                    name: s(&r, 0),
-                    unique: truthy(&s(&r, 1)),
-                    columns: split(s(&r, 2)),
-                    method: s(&r, 3),
-                    original_name: Some(s(&r, 0)),
-                })
+                .map(|r| IndexDef { name: s(&r, 0), unique: truthy(&s(&r, 1)), columns: split(s(&r, 2)), method: s(&r, 3), original_name: Some(s(&r, 0)) })
                 .collect())
         }
         DbKind::Mysql => {
@@ -415,13 +396,7 @@ pub fn indexes(d: &mut dyn Driver, schema: &str, table: &str) -> Result<Vec<Inde
             )?;
             Ok(rows
                 .into_iter()
-                .map(|r| IndexDef {
-                    name: s(&r, 0),
-                    unique: truthy(&s(&r, 1)),
-                    columns: split(s(&r, 2)),
-                    method: s(&r, 3),
-                    original_name: Some(s(&r, 0)),
-                })
+                .map(|r| IndexDef { name: s(&r, 0), unique: truthy(&s(&r, 1)), columns: split(s(&r, 2)), method: s(&r, 3), original_name: Some(s(&r, 0)) })
                 .collect())
         }
     }
@@ -556,11 +531,9 @@ pub fn table_comment(d: &mut dyn Driver, schema: &str, table: &str) -> Result<St
     let sql = match d.kind() {
         DbKind::Sqlite => return Ok(String::new()),
         DbKind::Postgres => format!("SELECT COALESCE(obj_description({}, 'pg_class'), '')", pg_regclass(schema, table)),
-        DbKind::Mysql => format!(
-            "SELECT table_comment FROM information_schema.tables WHERE table_schema = {} AND table_name = {}",
-            lit(kind, schema),
-            lit(kind, table)
-        ),
+        DbKind::Mysql => {
+            format!("SELECT table_comment FROM information_schema.tables WHERE table_schema = {} AND table_name = {}", lit(kind, schema), lit(kind, table))
+        }
     };
     Ok(query(d, &sql)?.first().map(|r| s(r, 0)).unwrap_or_default())
 }
@@ -583,10 +556,7 @@ fn primary_key_name(d: &mut dyn Driver, schema: &str, table: &str) -> Result<Str
     if d.kind() != DbKind::Postgres {
         return Ok(String::new());
     }
-    let rows = query(
-        d,
-        &format!("SELECT conname FROM pg_constraint WHERE contype = 'p' AND conrelid = {}", pg_regclass(schema, table)),
-    )?;
+    let rows = query(d, &format!("SELECT conname FROM pg_constraint WHERE contype = 'p' AND conrelid = {}", pg_regclass(schema, table)))?;
     Ok(rows.first().map(|r| s(r, 0)).unwrap_or_default())
 }
 
@@ -596,10 +566,7 @@ pub fn object_ddl(d: &mut dyn Driver, o: &DbObject) -> Result<String> {
     let first = |rows: Rows| rows.first().map(|r| s(r, 0)).ok_or_else(|| anyhow!(crate::trf!("object not found: {name}", name = o.name)));
     match kind {
         DbKind::Sqlite => {
-            let mut out = first(query(
-                d,
-                &format!("SELECT sql FROM {}.sqlite_master WHERE name = {}", kind.quote_one(&o.schema), lit(kind, &o.name)),
-            )?)? + ";";
+            let mut out = first(query(d, &format!("SELECT sql FROM {}.sqlite_master WHERE name = {}", kind.quote_one(&o.schema), lit(kind, &o.name)))?)? + ";";
             if o.kind == ObjectKind::Table {
                 let extra = query(
                     d,
@@ -643,10 +610,7 @@ pub fn object_ddl(d: &mut dyn Driver, o: &DbObject) -> Result<String> {
                 }
                 ObjectKind::View => {
                     let body = first(query(d, &format!("SELECT pg_get_viewdef({}, true)", pg_regclass(&o.schema, &o.name)))?)?;
-                    let mat = first(query(
-                        d,
-                        &format!("SELECT relkind FROM pg_class WHERE oid = {}", pg_regclass(&o.schema, &o.name)),
-                    )?)?;
+                    let mat = first(query(d, &format!("SELECT relkind FROM pg_class WHERE oid = {}", pg_regclass(&o.schema, &o.name)))?)?;
                     if mat == "m" {
                         Ok(format!("CREATE MATERIALIZED VIEW {q} AS\n{body}"))
                     } else {

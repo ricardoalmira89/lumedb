@@ -87,8 +87,7 @@ fn run(kind: DbKind) {
     for s in ddl::create_table(k, &vacunas) {
         d.execute(&s).unwrap_or_else(|e| panic!("{k:?}: {s}\n{e}"));
     }
-    d.execute(&format!("CREATE VIEW {} AS SELECT nombre FROM {}", k.qualified(&schema, "nombres"), k.qualified(&schema, "perros")))
-        .unwrap();
+    d.execute(&format!("CREATE VIEW {} AS SELECT nombre FROM {}", k.qualified(&schema, "nombres"), k.qualified(&schema, "perros"))).unwrap();
 
     // --- Metadata
     assert!(meta::list_schemas(d).unwrap().contains(&schema), "{k:?}");
@@ -121,10 +120,7 @@ fn run(kind: DbKind) {
     for n in ["Toby", "Luna", "O'Malley \\ barra"] {
         d.execute(&change_sql(k, &schema, "perros", &ins(n), false)).unwrap();
     }
-    let up = RowChange::Update {
-        key: vec![("id".into(), Value::Number("2".into()))],
-        set: vec![("edad".into(), Value::Number("7".into()))],
-    };
+    let up = RowChange::Update { key: vec![("id".into(), Value::Number("2".into()))], set: vec![("edad".into(), Value::Number("7".into()))] };
     assert_eq!(d.execute(&change_sql(k, &schema, "perros", &up, false)).unwrap().affected, Some(1), "{k:?}");
     let del = RowChange::Delete { key: vec![("id".into(), Value::Number("1".into()))] };
     d.execute(&change_sql(k, &schema, "perros", &del, false)).unwrap();
@@ -138,12 +134,7 @@ fn run(kind: DbKind) {
 
     // Binary data
     let blob = Value::Bytes(vec![0, 1, 2, 255]);
-    d.execute(&format!(
-        "INSERT INTO {} (id, perro_id, datos) VALUES (1, 2, {})",
-        k.qualified(&schema, "vacunas"),
-        blob.sql_literal(k)
-    ))
-    .unwrap();
+    d.execute(&format!("INSERT INTO {} (id, perro_id, datos) VALUES (1, 2, {})", k.qualified(&schema, "vacunas"), blob.sql_literal(k))).unwrap();
     let r = d.execute(&format!("SELECT datos FROM {}", k.qualified(&schema, "vacunas"))).unwrap();
     match k {
         DbKind::Postgres => assert_eq!(r.rows[0][0], Value::Text("\\x000102ff".into())),

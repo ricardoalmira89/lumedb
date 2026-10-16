@@ -167,9 +167,7 @@ impl Driver for PostgresDriver {
                     if res.columns.is_empty() {
                         res.columns = row.columns().iter().map(|c| c.name().to_string()).collect();
                     }
-                    res.rows.push(
-                        (0..row.len()).map(|i| row.get(i).map_or(Value::Null, |s| Value::Text(s.to_string()))).collect(),
-                    );
+                    res.rows.push((0..row.len()).map(|i| row.get(i).map_or(Value::Null, |s| Value::Text(s.to_string()))).collect());
                 }
                 M::CommandComplete(n) => res.affected = Some(n),
                 _ => {}
@@ -301,8 +299,6 @@ fn mysql_value(v: mysql::Value, col: MyCol) -> Value {
         } else {
             format!("{y:04}-{mo:02}-{d:02} {h:02}:{mi:02}:{s:02}.{us:06}")
         }),
-        Time(neg, d, h, mi, s, _) => {
-            Value::Text(format!("{}{:02}:{mi:02}:{s:02}", if neg { "-" } else { "" }, d * 24 + h as u32))
-        }
+        Time(neg, d, h, mi, s, _) => Value::Text(format!("{}{:02}:{mi:02}:{s:02}", if neg { "-" } else { "" }, d * 24 + h as u32)),
     }
 }

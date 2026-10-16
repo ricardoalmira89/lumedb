@@ -24,13 +24,7 @@ pub fn ribbon_button(ui: &mut Ui, icon: &str, label: &str, color: Color32, dropd
         p.text(rect.center_top() + egui::vec2(0.0, 20.0), Align2::CENTER_CENTER, icon, FontId::proportional(26.0), icon_color);
         p.text(rect.center_top() + egui::vec2(0.0, 46.0), Align2::CENTER_CENTER, label, label_font, text_color);
         if dropdown {
-            p.text(
-                rect.right_top() + egui::vec2(-8.0, 30.0),
-                Align2::CENTER_CENTER,
-                egui_phosphor::regular::CARET_DOWN,
-                FontId::proportional(9.0),
-                text_color,
-            );
+            p.text(rect.right_top() + egui::vec2(-8.0, 30.0), Align2::CENTER_CENTER, egui_phosphor::regular::CARET_DOWN, FontId::proportional(9.0), text_color);
         }
     }
     resp.on_disabled_hover_text(tr("Not available for this selection"))
@@ -63,12 +57,12 @@ pub fn toolbar(ui: &mut Ui, add: impl FnOnce(&mut Ui)) {
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
             // If it doesn't fit, it scrolls instead of widening the tab.
-            egui::ScrollArea::horizontal()
-                .id_salt(ui.id().with("toolbar"))
-                .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
-                .show(ui, |ui| {
+            egui::ScrollArea::horizontal().id_salt(ui.id().with("toolbar")).scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden).show(
+                ui,
+                |ui| {
                     ui.horizontal(add);
-                });
+                },
+            );
         });
 }
 
@@ -270,7 +264,13 @@ pub fn results_grid(ui: &mut Ui, id: impl std::hash::Hash, r: &QueryResult, st: 
                         for (ci, v) in r.rows[i].iter().enumerate() {
                             let selected = st.selected == Some((i, ci));
                             let in_row = st.selected.is_some_and(|(r, _)| r == i);
-                            let fill = if selected || in_rows { Some(sel_fill) } else if in_row { Some(row_fill) } else { None };
+                            let fill = if selected || in_rows {
+                                Some(sel_fill)
+                            } else if in_row {
+                                Some(row_fill)
+                            } else {
+                                None
+                            };
                             let (_, resp) = row.col(|ui| {
                                 cell_grid(ui, false, fill);
                                 value_label(ui, v);

@@ -63,17 +63,13 @@ impl Selection {
         match self {
             Selection::None => None,
             Selection::Connection(k) | Selection::Database(k, _) => Some(*k),
-            Selection::Schema(l) | Selection::Group(l, _) | Selection::Object(l, _) | Selection::Query(l, _) | Selection::Backup(l, _) => {
-                Some(l.conn)
-            }
+            Selection::Schema(l) | Selection::Group(l, _) | Selection::Object(l, _) | Selection::Query(l, _) | Selection::Backup(l, _) => Some(l.conn),
         }
     }
 
     pub fn loc(&self) -> Option<&Loc> {
         match self {
-            Selection::Schema(l) | Selection::Group(l, _) | Selection::Object(l, _) | Selection::Query(l, _) | Selection::Backup(l, _) => {
-                Some(l)
-            }
+            Selection::Schema(l) | Selection::Group(l, _) | Selection::Object(l, _) | Selection::Query(l, _) | Selection::Backup(l, _) => Some(l),
             _ => None,
         }
     }
@@ -207,7 +203,12 @@ pub enum Action {
     Select(Selection),
     Connect(ConnKey),
     /// Password typed in [`views::connection::PasswordPrompt`].
-    Unlock { key: ConnKey, password: String, ssh_password: Option<String>, remember: bool },
+    Unlock {
+        key: ConnKey,
+        password: String,
+        ssh_password: Option<String>,
+        remember: bool,
+    },
     Disconnect(ConnKey),
     OpenDatabase(ConnKey, String),
     CloseDatabase(ConnKey, String),
@@ -220,7 +221,7 @@ pub enum Action {
     EditConnection(ConnKey),
     DuplicateConnection(ConnKey),
     DeleteConnection(ConnKey),
-    SaveConnection(Option<ConnKey>, ConnectionConfig),
+    SaveConnection(Option<ConnKey>, Box<ConnectionConfig>),
     SetGroup(ConnKey, String),
     SetColor(ConnKey, Option<[u8; 3]>),
     ImportNcx,
@@ -243,7 +244,11 @@ pub enum Action {
     /// Interrupts the running query of a connection/database.
     Cancel(ConnKey, String),
     /// Runs statements and refreshes the tree at that location.
-    Exec { loc: Loc, statements: Vec<String>, done: String },
+    Exec {
+        loc: Loc,
+        statements: Vec<String>,
+        done: String,
+    },
 }
 
 pub struct Entry {
@@ -749,7 +754,7 @@ impl LumeDbApp {
                     s.schemas.clear();
                     s.objects.clear();
                     s.stats.clear();
-            s.tables.clear();
+                    s.tables.clear();
                     let dbs: Vec<String> = s.conns.keys().cloned().collect();
                     for db in dbs {
                         self.on_connected(key, &db, ctx);
@@ -803,11 +808,11 @@ impl LumeDbApp {
                     Some(key) => {
                         self.disconnect(key);
                         if let Some(s) = self.session_mut(key) {
-                            s.cfg = cfg;
+                            s.cfg = *cfg;
                         }
                     }
                     None => {
-                        self.add_session(cfg);
+                        self.add_session(*cfg);
                     }
                 }
                 self.persist();
@@ -826,9 +831,8 @@ impl LumeDbApp {
             }
             Action::ImportNcx => self.import_ncx(),
             Action::NewQuery(loc, sql) => {
-                let loc = loc
-                    .or_else(|| self.selection.loc().cloned())
-                    .or_else(|| self.selection.conn().and_then(|k| self.session(k)).map(|s| s.default_loc()));
+                let loc =
+                    loc.or_else(|| self.selection.loc().cloned()).or_else(|| self.selection.conn().and_then(|k| self.session(k)).map(|s| s.default_loc()));
                 let n = self.tabs.iter().filter(|t| t.view.key().is_some_and(|k| k.starts_with("query:"))).count() + 1;
                 self.open_tab(Box::new(views::query::QueryTab::new(loc, n, sql, None)));
             }
@@ -859,10 +863,7 @@ impl LumeDbApp {
             Action::DropObject(loc, obj) => {
                 let Some(kind) = self.session(loc.conn).map(|s| s.kind()) else { return };
                 let sql = meta::drop_sql(kind, &obj);
-                self.apply(
-                    Action::Exec { loc, statements: vec![sql], done: trf!("Dropped \"{name}\"", name = obj.label()) },
-                    ctx,
-                );
+                self.apply(Action::Exec { loc, statements: vec![sql], done: trf!("Dropped \"{name}\"", name = obj.label()) }, ctx);
             }
             Action::TruncateTable(loc, table) => {
                 let Some(kind) = self.session(loc.conn).map(|s| s.kind()) else { return };
@@ -945,11 +946,7 @@ impl LumeDbApp {
     }
 
     fn import_ncx(&mut self) {
-        let Some(path) = rfd::FileDialog::new()
-            .set_title(tr("Import Navicat connections"))
-            .add_filter(tr("Navicat connections"), &["ncx"])
-            .pick_file()
-        else {
+        let Some(path) = rfd::FileDialog::new().set_title(tr("Import Navicat connections")).add_filter(tr("Navicat connections"), &["ncx"]).pick_file() else {
             return;
         };
         let parsed = std::fs::read_to_string(&path).map_err(anyhow::Error::from).and_then(|xml| ncx::parse_ncx(&xml));

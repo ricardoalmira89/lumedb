@@ -37,7 +37,10 @@ pub enum Schedule {
     #[default]
     Manual,
     EveryMinutes(u32),
-    Daily { hour: u8, minute: u8 },
+    Daily {
+        hour: u8,
+        minute: u8,
+    },
 }
 
 impl Schedule {
@@ -54,9 +57,7 @@ impl Schedule {
         let last = last_run.and_then(|s| NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S").ok());
         match *self {
             Schedule::Manual => false,
-            Schedule::EveryMinutes(m) => {
-                last.is_none_or(|l| (now.naive_local() - l).num_minutes() >= m.max(1) as i64)
-            }
+            Schedule::EveryMinutes(m) => last.is_none_or(|l| (now.naive_local() - l).num_minutes() >= m.max(1) as i64),
             Schedule::Daily { hour, minute } => {
                 let today = now.date_naive().and_hms_opt(hour as u32, minute as u32, 0).unwrap();
                 now.naive_local() >= today && last.is_none_or(|l| l < today) && now.hour() == hour as u32

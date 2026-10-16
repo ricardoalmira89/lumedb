@@ -307,5 +307,6 @@ pub fn save_connections(conns: &[ConnectionConfig]) -> Result<()> {
 
 /// Whether some saved secret is in plain text because there is no keyring.
 pub fn plain_text_secrets(conns: &[ConnectionConfig]) -> bool {
-    !crate::secrets::available() && conns.iter().any(|c| c.save_password && (!c.password.is_empty() || !c.ssh.password.is_empty() || !c.ssh.passphrase.is_empty()))
+    !crate::secrets::available()
+        && conns.iter().any(|c| c.save_password && (!c.password.is_empty() || !c.ssh.password.is_empty() || !c.ssh.passphrase.is_empty()))
 }

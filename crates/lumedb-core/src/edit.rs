@@ -6,10 +6,17 @@ use crate::driver::Value;
 /// Pending change on a row.
 #[derive(Debug, Clone, PartialEq)]
 pub enum RowChange {
-    Insert { values: Vec<(String, Value)> },
+    Insert {
+        values: Vec<(String, Value)>,
+    },
     /// `key` identifies the row (primary key, or every column if there is none).
-    Update { key: Vec<(String, Value)>, set: Vec<(String, Value)> },
-    Delete { key: Vec<(String, Value)> },
+    Update {
+        key: Vec<(String, Value)>,
+        set: Vec<(String, Value)>,
+    },
+    Delete {
+        key: Vec<(String, Value)>,
+    },
 }
 
 fn where_clause(kind: DbKind, key: &[(String, Value)]) -> String {
@@ -73,8 +80,7 @@ pub fn select_sql(kind: DbKind, schema: &str, table: &str, b: &Browse) -> String
         sql.push_str(&format!(" WHERE {}", b.filter.trim()));
     }
     if !b.order.is_empty() {
-        let o: Vec<String> =
-            b.order.iter().map(|(c, asc)| format!("{} {}", kind.quote_one(c), if *asc { "ASC" } else { "DESC" })).collect();
+        let o: Vec<String> = b.order.iter().map(|(c, asc)| format!("{} {}", kind.quote_one(c), if *asc { "ASC" } else { "DESC" })).collect();
         sql.push_str(&format!(" ORDER BY {}", o.join(", ")));
     }
     if b.limit > 0 {

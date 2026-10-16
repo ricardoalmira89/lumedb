@@ -112,11 +112,8 @@ impl CodeTab {
         self.error = None;
         self.save_id = Some(cx.run(&self.loc, move |d, _| {
             enter_schema(d, &schema)?;
-            let stmts: Vec<String> = if kind == DbKind::Mysql {
-                vec![mysql_body(&text)]
-            } else {
-                split_statements(&text, kind).into_iter().map(|s| s.sql).collect()
-            };
+            let stmts: Vec<String> =
+                if kind == DbKind::Mysql { vec![mysql_body(&text)] } else { split_statements(&text, kind).into_iter().map(|s| s.sql).collect() };
             let tx = kind != DbKind::Mysql;
             if tx {
                 d.execute("BEGIN")?;

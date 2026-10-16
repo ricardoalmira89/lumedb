@@ -11,8 +11,8 @@ use crate::driver::Driver;
 use crate::edit::{select_sql, Browse};
 use crate::meta::{self, DbObject, ObjectKind};
 use crate::sql::split_statements;
-use crate::transfer::insert_statements;
 use crate::tr;
+use crate::transfer::insert_statements;
 
 #[derive(Debug, Clone, Copy)]
 pub struct DumpOptions {
@@ -141,7 +141,8 @@ pub fn dump_schema(
                 writeln!(w, "-- ----------------------------\n-- {} {}\n-- ----------------------------", kindo.singular(), obj.name)?;
                 if o.drop_first {
                     let drop = meta::drop_sql(kind, &DbObject { schema: out_schema.to_string(), ..obj.clone() });
-                    let drop = drop.replacen(" VIEW ", " VIEW IF EXISTS ", 1)
+                    let drop = drop
+                        .replacen(" VIEW ", " VIEW IF EXISTS ", 1)
                         .replacen(" FUNCTION ", " FUNCTION IF EXISTS ", 1)
                         .replacen(" PROCEDURE ", " PROCEDURE IF EXISTS ", 1)
                         .replacen(" TRIGGER ", " TRIGGER IF EXISTS ", 1)
@@ -182,12 +183,7 @@ pub fn use_schema(d: &mut dyn Driver, schema: &str) -> Result<()> {
 }
 
 /// Runs a script statement by statement.
-pub fn run_script(
-    d: &mut dyn Driver,
-    script: &str,
-    continue_on_error: bool,
-    progress: &mut dyn FnMut(usize, usize),
-) -> Result<ScriptReport> {
+pub fn run_script(d: &mut dyn Driver, script: &str, continue_on_error: bool, progress: &mut dyn FnMut(usize, usize)) -> Result<ScriptReport> {
     let stmts = split_statements(script, d.kind());
     let mut rep = ScriptReport::default();
     for (i, s) in stmts.iter().enumerate() {
@@ -227,13 +223,7 @@ pub fn backup_dir(connection: &str, schema: &str) -> Result<PathBuf> {
 }
 
 /// Creates a compressed backup (`.sql.gz`).
-pub fn create_backup(
-    d: &mut dyn Driver,
-    connection: &str,
-    schema: &str,
-    comment: &str,
-    progress: &mut dyn FnMut(&str),
-) -> Result<PathBuf> {
+pub fn create_backup(d: &mut dyn Driver, connection: &str, schema: &str, comment: &str, progress: &mut dyn FnMut(&str)) -> Result<PathBuf> {
     let name = chrono::Local::now().format("%Y%m%d%H%M%S").to_string();
     let path = backup_dir(connection, schema)?.join(format!("{name}.sql.gz"));
     let file = std::fs::File::create(&path)?;
@@ -253,17 +243,8 @@ pub fn list_backups(connection: &str, schema: &str) -> Result<Vec<BackupInfo>> {
         let path = e.path();
         if path.to_string_lossy().ends_with(".sql.gz") {
             let meta = e.metadata()?;
-            let created = meta
-                .modified()
-                .ok()
-                .map(|t| chrono::DateTime::<chrono::Local>::from(t).format("%Y-%m-%d %H:%M:%S").to_string())
-                .unwrap_or_default();
-            out.push(BackupInfo {
-                name: path.file_name().unwrap().to_string_lossy().trim_end_matches(".sql.gz").to_string(),
-                path,
-                size: meta.len(),
-                created,
-            });
+            let created = meta.modified().ok().map(|t| chrono::DateTime::<chrono::Local>::from(t).format("%Y-%m-%d %H:%M:%S").to_string()).unwrap_or_default();
+            out.push(BackupInfo { name: path.file_name().unwrap().to_string_lossy().trim_end_matches(".sql.gz").to_string(), path, size: meta.len(), created });
         }
     }
     out.sort_by(|a, b| b.name.cmp(&a.name));

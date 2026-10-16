@@ -61,41 +61,34 @@ impl Notice {
 
 /// Darkens the window behind a modal and swallows clicks on it.
 fn backdrop(ctx: &egui::Context) {
-    egui::Area::new(egui::Id::new("lumedb_modal_backdrop"))
-        .order(egui::Order::Middle)
-        .fixed_pos(egui::Pos2::ZERO)
-        .interactable(true)
-        .show(ctx, |ui| {
-            let r = ctx.screen_rect();
-            ui.allocate_rect(r, egui::Sense::click());
-            ui.painter().rect_filled(r, 0.0, Color32::from_black_alpha(70));
-        });
+    egui::Area::new(egui::Id::new("lumedb_modal_backdrop")).order(egui::Order::Middle).fixed_pos(egui::Pos2::ZERO).interactable(true).show(ctx, |ui| {
+        let r = ctx.screen_rect();
+        ui.allocate_rect(r, egui::Sense::click());
+        ui.painter().rect_filled(r, 0.0, Color32::from_black_alpha(70));
+    });
 }
 
 /// Card centred on screen with an icon on the left; `body` draws the text, `buttons` the row of
 /// buttons, right-aligned.
 fn modal_card(ctx: &egui::Context, id: &str, level: Level, title: &str, body: impl FnOnce(&mut Ui), buttons: impl FnOnce(&mut Ui)) {
     backdrop(ctx);
-    egui::Area::new(egui::Id::new(id))
-        .order(egui::Order::Foreground)
-        .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
-        .show(ctx, |ui| {
-            egui::Frame::window(ui.style()).inner_margin(egui::Margin::same(18.0)).show(ui, |ui| {
-                ui.set_width(420.0);
-                ui.horizontal_top(|ui| {
-                    let (glyph, color) = level.icon();
-                    ui.label(RichText::new(glyph).size(30.0).color(color));
-                    ui.add_space(6.0);
-                    ui.vertical(|ui| {
-                        ui.add(egui::Label::new(RichText::new(title).strong().size(15.0)).wrap());
-                        ui.add_space(4.0);
-                        body(ui);
-                    });
+    egui::Area::new(egui::Id::new(id)).order(egui::Order::Foreground).anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO).show(ctx, |ui| {
+        egui::Frame::window(ui.style()).inner_margin(egui::Margin::same(18.0)).show(ui, |ui| {
+            ui.set_width(420.0);
+            ui.horizontal_top(|ui| {
+                let (glyph, color) = level.icon();
+                ui.label(RichText::new(glyph).size(30.0).color(color));
+                ui.add_space(6.0);
+                ui.vertical(|ui| {
+                    ui.add(egui::Label::new(RichText::new(title).strong().size(15.0)).wrap());
+                    ui.add_space(4.0);
+                    body(ui);
                 });
-                ui.add_space(12.0);
-                ui.allocate_ui_with_layout(egui::vec2(ui.available_width(), 26.0), egui::Layout::right_to_left(egui::Align::Center), buttons);
             });
+            ui.add_space(12.0);
+            ui.allocate_ui_with_layout(egui::vec2(ui.available_width(), 26.0), egui::Layout::right_to_left(egui::Align::Center), buttons);
         });
+    });
 }
 
 /// Details section, collapsed, with a monospace text that can be selected.

@@ -102,7 +102,10 @@ const SNIPPETS: &[(&str, &str)] = &[
     ("INSERT", "INSERT INTO table_name (column1, column2)\nVALUES ('value1', 'value2');"),
     ("UPDATE", "UPDATE table_name\nSET column_name = 'value'\nWHERE id = 1;"),
     ("DELETE", "DELETE FROM table_name\nWHERE id = 1;"),
-    ("CREATE TABLE", "CREATE TABLE new_table (\n  id INTEGER PRIMARY KEY,\n  name VARCHAR(100) NOT NULL,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n);"),
+    (
+        "CREATE TABLE",
+        "CREATE TABLE new_table (\n  id INTEGER PRIMARY KEY,\n  name VARCHAR(100) NOT NULL,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n);",
+    ),
     ("CREATE INDEX", "CREATE INDEX idx_table_column ON table_name (column_name);"),
     ("CREATE VIEW", "CREATE VIEW new_view AS\nSELECT *\nFROM table_name;"),
     ("WITH (CTE)", "WITH data AS (\n  SELECT *\n  FROM table_name\n)\nSELECT *\nFROM data;"),
@@ -200,11 +203,8 @@ impl QueryTab {
         if sql.lines().all(is_comment) {
             let start = self.editor.find(sql.lines().next().unwrap_or("")).unwrap_or(0);
             let end = (start + sql.len()).min(self.editor.len());
-            let prompt: Vec<String> = sql
-                .lines()
-                .map(|l| l.trim_start().trim_start_matches('#').trim_start_matches("--").trim().to_string())
-                .filter(|l| !l.is_empty())
-                .collect();
+            let prompt: Vec<String> =
+                sql.lines().map(|l| l.trim_start().trim_start_matches('#').trim_start_matches("--").trim().to_string()).filter(|l| !l.is_empty()).collect();
             if !prompt.is_empty() {
                 self.generate_ai_for(cx, start, end, prompt.join("\n"));
                 return;
@@ -455,7 +455,11 @@ impl QueryTab {
             let r = out.response.rect;
             let right = out.galley_pos.x - 8.0;
             let p = ui.painter();
-            p.rect_filled(egui::Rect::from_min_max(egui::pos2(right - gutter, r.min.y), egui::pos2(right, r.max.y.max(ui.clip_rect().max.y))), 0.0, theme::panel(ui.ctx()));
+            p.rect_filled(
+                egui::Rect::from_min_max(egui::pos2(right - gutter, r.min.y), egui::pos2(right, r.max.y.max(ui.clip_rect().max.y))),
+                0.0,
+                theme::panel(ui.ctx()),
+            );
             let mut line = 1;
             let mut new_line = true;
             for row in &out.galley.rows {
@@ -482,10 +486,8 @@ impl QueryTab {
                 self.completion = None;
             }
         }
-        if !out.response.has_focus() && !accept {
-            if out.response.lost_focus() {
-                self.completion = None;
-            }
+        if !out.response.has_focus() && !accept && out.response.lost_focus() {
+            self.completion = None;
         }
         // Dropdown list under the cursor.
         if let (Some(c), Some(range)) = (&mut self.completion, out.cursor_range) {
@@ -497,7 +499,13 @@ impl QueryTab {
                     egui::ScrollArea::vertical().max_height(220.0).show(ui, |ui| {
                         for (i, item) in c.items.iter().enumerate() {
                             let is_kw = KEYWORDS.contains(&item.as_str());
-                            let ic = if is_kw { icon::CODE } else if self.catalog.contains_key(item) { icon::TABLE } else { icon::COLUMNS };
+                            let ic = if is_kw {
+                                icon::CODE
+                            } else if self.catalog.contains_key(item) {
+                                icon::TABLE
+                            } else {
+                                icon::COLUMNS
+                            };
                             let r = ui.selectable_label(i == c.index, format!("{ic}  {item}"));
                             if i == c.index {
                                 r.scroll_to_me(None);
@@ -582,7 +590,6 @@ impl QueryTab {
             },
         }
     }
-
 }
 
 /// Looks for `FROM table alias` or `JOIN table AS alias` to resolve an alias.
@@ -893,7 +900,7 @@ impl View for QueryTab {
                 ui.separator();
                 egui::ScrollArea::vertical().show(ui, |ui| {
                     for (name, code) in SNIPPETS {
-                        let r = ui.selectable_label(false, tr(*name)).on_hover_text(*code);
+                        let r = ui.selectable_label(false, tr(name)).on_hover_text(*code);
                         if r.double_clicked() {
                             let at = self.last_cursor.min(self.editor.len());
                             self.editor.insert_str(at, code);
@@ -914,19 +921,24 @@ impl View for QueryTab {
         if let Some(name) = &mut self.save_dialog {
             let mut done = None;
             let mut cancel = false;
-            egui::Window::new(tr("Save Query")).id(egui::Id::new("save_query_dialog")).collapsible(false).resizable(false).anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO).show(ui.ctx(), |ui| {
-                ui.label(tr("Query name:"));
-                let r = ui.text_edit_singleline(name);
-                r.request_focus();
-                ui.horizontal(|ui| {
-                    if ui.button(tr("Save")).clicked() || (r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter))) {
-                        done = Some(name.clone());
-                    }
-                    if ui.button(tr("Cancel")).clicked() {
-                        cancel = true;
-                    }
+            egui::Window::new(tr("Save Query"))
+                .id(egui::Id::new("save_query_dialog"))
+                .collapsible(false)
+                .resizable(false)
+                .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
+                .show(ui.ctx(), |ui| {
+                    ui.label(tr("Query name:"));
+                    let r = ui.text_edit_singleline(name);
+                    r.request_focus();
+                    ui.horizontal(|ui| {
+                        if ui.button(tr("Save")).clicked() || (r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter))) {
+                            done = Some(name.clone());
+                        }
+                        if ui.button(tr("Cancel")).clicked() {
+                            cancel = true;
+                        }
+                    });
                 });
-            });
             if let Some(n) = done.filter(|n| !n.trim().is_empty()) {
                 let conn = self.loc.as_ref().map(|l| cx.conn_name(l.conn)).unwrap_or_else(|| "no connection".into());
                 match store::save_query(&conn, n.trim(), &self.editor) {

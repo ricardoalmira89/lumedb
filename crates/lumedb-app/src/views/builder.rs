@@ -303,7 +303,13 @@ impl QueryBuilder {
                 } else {
                     format!(" {}", lit(self.kind, v))
                 };
-                let join = if i == 0 { "" } else if c.or { "OR " } else { "AND " };
+                let join = if i == 0 {
+                    ""
+                } else if c.or {
+                    "OR "
+                } else {
+                    "AND "
+                };
                 format!("{join}{lhs} {}{rhs}", c.op)
             })
             .collect();
@@ -314,7 +320,12 @@ impl QueryBuilder {
             sql.push_str(&format!("\nGROUP BY\n  {}", plain.join(",\n  ")));
         }
         if !self.orders.is_empty() {
-            let o: Vec<String> = self.orders.iter().filter(|(f, _)| !f.is_empty()).map(|(f, asc)| format!("{} {}", self.field_sql(f), if *asc { "ASC" } else { "DESC" })).collect();
+            let o: Vec<String> = self
+                .orders
+                .iter()
+                .filter(|(f, _)| !f.is_empty())
+                .map(|(f, asc)| format!("{} {}", self.field_sql(f), if *asc { "ASC" } else { "DESC" }))
+                .collect();
             if !o.is_empty() {
                 sql.push_str(&format!("\nORDER BY\n  {}", o.join(",\n  ")));
             }
@@ -349,7 +360,11 @@ impl QueryBuilder {
                 }
                 egui::TopBottomPanel::bottom("qb_bottom").resizable(true).default_height(250.0).show_inside(ui, |ui| self.bottom_ui(ui, &mut outcome));
                 egui::SidePanel::left("qb_tables").default_width(190.0).resizable(true).show_inside(ui, |ui| {
-                    ui.add(egui::TextEdit::singleline(&mut self.filter).hint_text(format!("{}  {}", icon::MAGNIFYING_GLASS, tr("Search table"))).desired_width(f32::INFINITY));
+                    ui.add(
+                        egui::TextEdit::singleline(&mut self.filter)
+                            .hint_text(format!("{}  {}", icon::MAGNIFYING_GLASS, tr("Search table")))
+                            .desired_width(f32::INFINITY),
+                    );
                     ui.label(RichText::new(tr("Double-click or drag onto the canvas")).size(11.0).color(theme::MUTED));
                     let f = self.filter.to_lowercase();
                     let names: Vec<String> = self.catalog.keys().filter(|t| f.is_empty() || t.to_lowercase().contains(&f)).cloned().collect();
@@ -379,13 +394,25 @@ impl QueryBuilder {
         let painter = ui.painter_at(rect);
         painter.rect_filled(rect, 0.0, if dark { Color32::from_rgb(0x1A, 0x1B, 0x1E) } else { Color32::from_rgb(0xF8, 0xF9, 0xFB) });
         if self.tables.is_empty() {
-            painter.text(rect.center(), egui::Align2::CENTER_CENTER, tr("Add tables from the list on the left"), egui::FontId::proportional(14.0), theme::MUTED);
+            painter.text(
+                rect.center(),
+                egui::Align2::CENTER_CENTER,
+                tr("Add tables from the list on the left"),
+                egui::FontId::proportional(14.0),
+                theme::MUTED,
+            );
         }
         // Drop a table dragged from the list.
         let dragged: Option<String> = ui.ctx().data(|d| d.get_temp(egui::Id::new("qb_drag_table")));
         if let Some(t) = &dragged {
             if let Some(p) = ui.ctx().pointer_latest_pos() {
-                painter.text(p + Vec2::new(10.0, 0.0), egui::Align2::LEFT_CENTER, format!("{}  {t}", icon::TABLE), egui::FontId::proportional(13.0), theme::BLUE);
+                painter.text(
+                    p + Vec2::new(10.0, 0.0),
+                    egui::Align2::LEFT_CENTER,
+                    format!("{}  {t}", icon::TABLE),
+                    egui::FontId::proportional(13.0),
+                    theme::BLUE,
+                );
             }
             if ui.input(|i| i.pointer.any_released()) {
                 if let Some(p) = ui.ctx().pointer_latest_pos().filter(|p| rect.contains(*p)) {
@@ -415,7 +442,13 @@ impl QueryBuilder {
             let head = Rect::from_min_size(r.min, Vec2::new(BOX_W, HEAD_H));
             painter.rect_filled(head, egui::Rounding { nw: 4.0, ne: 4.0, sw: 0.0, se: 0.0 }, theme::kind_color(self.kind));
             let title = if t.alias == t.table { t.table.clone() } else { format!("{} ({})", t.table, t.alias) };
-            painter.text(head.left_center() + Vec2::new(8.0, 0.0), egui::Align2::LEFT_CENTER, format!("{}  {title}", icon::TABLE), egui::FontId::proportional(13.0), Color32::WHITE);
+            painter.text(
+                head.left_center() + Vec2::new(8.0, 0.0),
+                egui::Align2::LEFT_CENTER,
+                format!("{}  {title}", icon::TABLE),
+                egui::FontId::proportional(13.0),
+                Color32::WHITE,
+            );
             let hr = ui.interact(head, ui.id().with(("qb_head", i)), Sense::click_and_drag());
             if hr.drag_started() {
                 self.dragging = Some(i);
@@ -495,7 +528,14 @@ impl QueryBuilder {
                 JoinKind::Full => "⊔",
             };
             painter.text(mid, egui::Align2::CENTER_CENTER, tag, egui::FontId::proportional(10.0), theme::ORANGE);
-            let jr = ui.interact(diamond, ui.id().with(("qb_join", ji)), Sense::click()).on_hover_text(format!("{} ON {}.{} = {}.{}", j.kind.sql(), j.a.0, j.a.1, j.b.0, j.b.1));
+            let jr = ui.interact(diamond, ui.id().with(("qb_join", ji)), Sense::click()).on_hover_text(format!(
+                "{} ON {}.{} = {}.{}",
+                j.kind.sql(),
+                j.a.0,
+                j.a.1,
+                j.b.0,
+                j.b.1
+            ));
             if jr.clicked() || jr.secondary_clicked() {
                 join_menu = Some(ji);
             }
@@ -506,22 +546,27 @@ impl QueryBuilder {
         let menu: Option<usize> = ui.ctx().data(|d| d.get_temp(egui::Id::new("qb_join_menu")));
         if let Some(ji) = menu.filter(|ji| *ji < self.joins.len()) {
             let mut close = false;
-            egui::Window::new(tr("Join")).id(egui::Id::new("qb_join_window")).collapsible(false).resizable(false).fixed_pos(ui.ctx().pointer_latest_pos().unwrap_or(rect.center())).show(ui.ctx(), |ui| {
-                let j = &mut self.joins[ji];
-                ui.label(format!("{}.{} = {}.{}", j.a.0, j.a.1, j.b.0, j.b.1));
-                for k in JoinKind::ALL {
-                    ui.radio_value(&mut j.kind, k, k.sql());
-                }
-                ui.horizontal(|ui| {
-                    if ui.button(tr("OK")).clicked() {
-                        close = true;
+            egui::Window::new(tr("Join"))
+                .id(egui::Id::new("qb_join_window"))
+                .collapsible(false)
+                .resizable(false)
+                .fixed_pos(ui.ctx().pointer_latest_pos().unwrap_or(rect.center()))
+                .show(ui.ctx(), |ui| {
+                    let j = &mut self.joins[ji];
+                    ui.label(format!("{}.{} = {}.{}", j.a.0, j.a.1, j.b.0, j.b.1));
+                    for k in JoinKind::ALL {
+                        ui.radio_value(&mut j.kind, k, k.sql());
                     }
-                    if ui.button(format!("{}  {}", icon::TRASH, tr("Remove join"))).clicked() {
-                        self.joins.remove(ji);
-                        close = true;
-                    }
+                    ui.horizontal(|ui| {
+                        if ui.button(tr("OK")).clicked() {
+                            close = true;
+                        }
+                        if ui.button(format!("{}  {}", icon::TRASH, tr("Remove join"))).clicked() {
+                            self.joins.remove(ji);
+                            close = true;
+                        }
+                    });
                 });
-            });
             if close {
                 ui.ctx().data_mut(|d| d.remove::<usize>(egui::Id::new("qb_join_menu")));
             }
@@ -533,7 +578,8 @@ impl QueryBuilder {
                 painter.line_segment([*p, ptr], Stroke::new(1.5, theme::BLUE));
             }
             if drop_link || ui.input(|i| i.pointer.any_released()) {
-                let target = ui.ctx().pointer_latest_pos().and_then(|ptr| row_rects.iter().find(|(c, r)| r.contains(ptr) && c.0 != from.0).map(|(c, _)| c.clone()));
+                let target =
+                    ui.ctx().pointer_latest_pos().and_then(|ptr| row_rects.iter().find(|(c, r)| r.contains(ptr) && c.0 != from.0).map(|(c, _)| c.clone()));
                 if let Some(to) = target {
                     self.joins.push(Join { a: from.clone(), b: to, kind: JoinKind::Inner });
                 }
@@ -613,7 +659,11 @@ impl QueryBuilder {
                                 }
                             });
                             if !c.op.starts_with("IS") {
-                                ui.add(egui::TextEdit::singleline(&mut c.value).desired_width(120.0).hint_text(if c.op.contains("IN") { "a, b, c" } else { tr("value") }));
+                                ui.add(egui::TextEdit::singleline(&mut c.value).desired_width(120.0).hint_text(if c.op.contains("IN") {
+                                    "a, b, c"
+                                } else {
+                                    tr("value")
+                                }));
                             }
                             if ui.small_button(icon::X).clicked() {
                                 remove = Some(i);
