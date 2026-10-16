@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=NaviDog
+GenericName=Gestor de bases de datos
+Comment=Administra MySQL, PostgreSQL y SQLite
+Exec=navidog
+Icon=navidog
+Terminal=false
+Categories=Development;Database;
+Keywords=sql;mysql;postgres;sqlite;database;
+StartupWMClass=navidog
