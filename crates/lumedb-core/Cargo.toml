@@ -2,7 +2,11 @@
 name = "lumedb-core"
 version.workspace = true
 edition.workspace = true
+description = "Core of LumeDB: connections, drivers, metadata, DDL and data tools for MySQL, PostgreSQL and SQLite"
 license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
 [dependencies]
 anyhow = "1"

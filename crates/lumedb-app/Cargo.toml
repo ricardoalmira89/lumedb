@@ -2,7 +2,11 @@
 name = "lumedb-app"
 version.workspace = true
 edition.workspace = true
+description = "LumeDB, a native database client for MySQL, PostgreSQL and SQLite"
 license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
 [[bin]]
 name = "lumedb"

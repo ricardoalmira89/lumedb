@@ -146,6 +146,51 @@ pub fn load_designs(d: &mut dyn lumedb_core::Driver, schema: &str, report: &dyn 
 }
 
 /// Relation between two canvas tables: (child, parent).
+/// The references (child → parent) among `members` without those that close a cycle, found as
+/// back edges of a depth-first search.
+fn acyclic(es: &[(usize, usize)], members: &[usize]) -> Vec<(usize, usize)> {
+    let set: std::collections::HashSet<usize> = members.iter().copied().collect();
+    let mut out: HashMap<usize, Vec<usize>> = HashMap::new();
+    for &(c, p) in es {
+        if set.contains(&c) && set.contains(&p) {
+            out.entry(c).or_default().push(p);
+        }
+    }
+    // 0 = not visited, 1 = on the current path, 2 = done.
+    let mut state: HashMap<usize, u8> = HashMap::new();
+    let mut back: std::collections::HashSet<(usize, usize)> = std::collections::HashSet::new();
+    let mut sorted = members.to_vec();
+    sorted.sort_unstable();
+    for &start in &sorted {
+        if state.get(&start).copied().unwrap_or(0) != 0 {
+            continue;
+        }
+        let mut stack: Vec<(usize, usize)> = vec![(start, 0)];
+        state.insert(start, 1);
+        while let Some(&mut (v, ref mut i)) = stack.last_mut() {
+            let next = out.get(&v).and_then(|ps| ps.get(*i)).copied();
+            *i += 1;
+            match next {
+                Some(p) => match state.get(&p).copied().unwrap_or(0) {
+                    0 => {
+                        state.insert(p, 1);
+                        stack.push((p, 0));
+                    }
+                    1 => {
+                        back.insert((v, p));
+                    }
+                    _ => {}
+                },
+                None => {
+                    state.insert(v, 2);
+                    stack.pop();
+                }
+            }
+        }
+    }
+    es.iter().copied().filter(|e| set.contains(&e.0) && set.contains(&e.1) && !back.contains(e)).collect()
+}
+
 fn edges(tables: &[TableDesign]) -> Vec<(usize, usize)> {
     let idx: HashMap<&str, usize> = tables.iter().enumerate().map(|(i, t)| (t.name.as_str(), i)).collect();
     let mut out = Vec::new();
@@ -291,11 +336,15 @@ impl ErCanvas {
                 isolated.push(members[0]);
                 continue;
             }
+            // References that close a cycle (e.g. departments → employees → positions →
+            // departments) are left out of the layering: with them the longest path never ends and
+            // the tables of the cycle are pushed dozens of empty columns away.
+            let dag = acyclic(&es, &members);
             // Layer = longest path from the tables that reference nobody.
             let mut layer: HashMap<usize, usize> = members.iter().map(|&m| (m, 0)).collect();
             for _ in 0..members.len() {
                 let mut changed = false;
-                for &(child, parent) in &es {
+                for &(child, parent) in &dag {
                     if layer.contains_key(&child) {
                         let want = layer[&parent] + 1;
                         if want > layer[&child] && want < members.len() {
@@ -313,11 +362,11 @@ impl ErCanvas {
             for _ in 0..members.len() {
                 let mut changed = false;
                 for &m in &members {
-                    let has_parent = es.iter().any(|&(c, _)| c == m);
+                    let has_parent = dag.iter().any(|&(c, _)| c == m);
                     if has_parent {
                         continue;
                     }
-                    let children: Vec<usize> = es.iter().filter(|&&(_, p)| p == m).map(|&(c, _)| layer[&c]).collect();
+                    let children: Vec<usize> = dag.iter().filter(|&&(_, p)| p == m).map(|&(c, _)| layer[&c]).collect();
                     if let Some(&min_child) = children.iter().min() {
                         let want = min_child.saturating_sub(1);
                         if want > layer[&m] {
@@ -330,9 +379,11 @@ impl ErCanvas {
                     break;
                 }
             }
-            let base = layer.values().copied().min().unwrap_or(0);
+            // Consecutive layer numbers, with no empty columns.
+            let used: std::collections::BTreeSet<usize> = layer.values().copied().collect();
+            let renumber: HashMap<usize, usize> = used.into_iter().enumerate().map(|(i, l)| (l, i)).collect();
             for v in layer.values_mut() {
-                *v -= base;
+                *v = renumber[v];
             }
             let depth = layer.values().copied().max().unwrap_or(0) + 1;
             let mut layers: Vec<Vec<usize>> = vec![Vec::new(); depth];
@@ -1281,6 +1332,16 @@ fn elbow(a: Rect, b: Rect) -> Vec<Pos2> {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn cycles_are_broken_for_layout() {
+        // departments → employees → positions → departments, plus orders → departments.
+        let es = [(0, 1), (1, 2), (2, 0), (3, 0)];
+        let dag = super::acyclic(&es, &[0, 1, 2, 3]);
+        assert_eq!(dag.len(), 3, "exactly one reference of the cycle is dropped: {dag:?}");
+        assert!(dag.contains(&(3, 0)));
+    }
+
     use super::*;
     use lumedb_core::ddl::{ColumnDef, ForeignKeyDef};
 

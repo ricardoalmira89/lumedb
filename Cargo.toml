@@ -6,3 +6,6 @@ members = ["crates/lumedb-core", "crates/lumedb-app"]
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
+authors = ["Ricardo Almira"]
+repository = "https://github.com/ricardoalmira89/lumedb"
+homepage = "https://github.com/ricardoalmira89/lumedb"
