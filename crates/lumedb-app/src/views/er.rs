@@ -779,7 +779,7 @@ impl ErCanvas {
                 if x > rect.right() {
                     break;
                 }
-                painter.vline(x, rect.y_range(), Stroke::new(1.0, if i.rem_euclid(5) == 0 { major } else { minor }));
+                painter.vline(x, rect.y_range(), Stroke::new(1.0_f32, if i.rem_euclid(5) == 0 { major } else { minor }));
                 i += 1;
             }
             let mut j = ((rect.top() - rect.min.y - self.pan.y) / step).floor() as i64;
@@ -788,7 +788,7 @@ impl ErCanvas {
                 if y > rect.bottom() {
                     break;
                 }
-                painter.hline(rect.x_range(), y, Stroke::new(1.0, if j.rem_euclid(5) == 0 { major } else { minor }));
+                painter.hline(rect.x_range(), y, Stroke::new(1.0_f32, if j.rem_euclid(5) == 0 { major } else { minor }));
                 j += 1;
             }
         }
@@ -1034,12 +1034,12 @@ impl ErCanvas {
                 Some(Drag::Band(start)) => {
                     if let Some(p) = ui.ctx().pointer_latest_pos() {
                         let band = Rect::from_two_pos(*start, p);
-                        painter.rect(band, 0.0, theme::BLUE.gamma_multiply(0.12), Stroke::new(1.0, theme::BLUE));
+                        painter.rect(band, 0.0, theme::BLUE.gamma_multiply(0.12), Stroke::new(1.0_f32, theme::BLUE));
                     }
                 }
                 Some(Drag::Link { from, .. }) => {
                     if let Some(p) = ui.ctx().pointer_latest_pos() {
-                        painter.line_segment([*from, p], Stroke::new(2.0, theme::ORANGE));
+                        painter.line_segment([*from, p], Stroke::new(2.0_f32, theme::ORANGE));
                         painter.circle_filled(*from, 3.0, theme::ORANGE);
                     }
                 }
@@ -1141,7 +1141,7 @@ impl ErCanvas {
         // Bottom bar: refresh, tools and color.
         let bar = Rect::from_min_max(Pos2::new(full.min.x, rect.max.y), full.max);
         ui.painter().rect_filled(bar, 0.0, theme::panel(ui.ctx()));
-        ui.painter().hline(bar.x_range(), bar.top(), Stroke::new(1.0, theme::border(ui.ctx())));
+        ui.painter().hline(bar.x_range(), bar.top(), Stroke::new(1.0_f32, theme::border(ui.ctx())));
         ui.allocate_new_ui(egui::UiBuilder::new().max_rect(bar.shrink2(Vec2::new(6.0, 3.0))), |ui| {
             ui.horizontal_centered(|ui| {
                 if ui.button(format!("{}  {}", icon::ARROW_CLOCKWISE, tr("Refresh"))).clicked() {
@@ -1224,9 +1224,9 @@ impl ErCanvas {
             panel,
             4.0,
             if dark { Color32::from_rgb(0x2B, 0x2D, 0x30) } else { Color32::from_rgb(0xF4, 0xF5, 0xF7) },
-            Stroke::new(1.0, theme::border(ui.ctx())),
+            Stroke::new(1.0_f32, theme::border(ui.ctx())),
         );
-        painter.rect(mini, 0.0, if dark { Color32::from_rgb(0x1E, 0x1F, 0x22) } else { Color32::WHITE }, Stroke::new(1.0, theme::border(ui.ctx())));
+        painter.rect(mini, 0.0, if dark { Color32::from_rgb(0x1E, 0x1F, 0x22) } else { Color32::WHITE }, Stroke::new(1.0_f32, theme::border(ui.ctx())));
         let view = Rect::from_min_max(((rect.min - origin) / z).to_pos2(), ((rect.max - origin) / z).to_pos2());
         let world = self.bounds().unwrap_or(view).union(view).expand(20.0);
         let scale = (mini.width() / world.width()).min(mini.height() / world.height());
@@ -1236,7 +1236,7 @@ impl ErCanvas {
                 painter.rect_filled(Rect::from_min_max(to_mini(wr.min), to_mini(wr.max)), 1.0, self.header(&t.name));
             }
         }
-        painter.rect_stroke(Rect::from_min_max(to_mini(view.min), to_mini(view.max)).intersect(mini), 0.0, Stroke::new(1.5, theme::ORANGE));
+        painter.rect_stroke(Rect::from_min_max(to_mini(view.min), to_mini(view.max)).intersect(mini), 0.0, Stroke::new(1.5_f32, theme::ORANGE));
         let mr = ui.interact(mini, ui.id().with("er_minimap"), Sense::click_and_drag());
         if let Some(p) = mr.interact_pointer_pos().filter(|_| mr.dragged() || mr.clicked()) {
             let target = world.min + (p - mini.min) / scale;
@@ -1264,7 +1264,7 @@ impl ErCanvas {
         painter.rect_filled(track, 2.0, theme::border(ui.ctx()));
         let frac = (self.zoom.ln() - 0.3f32.ln()) / (3.0f32.ln() - 0.3f32.ln());
         let knob = Pos2::new(track.left() + frac * track.width(), track.center().y);
-        painter.circle(knob, 6.0, theme::bg(ui.ctx()), Stroke::new(1.5, theme::BLUE));
+        painter.circle(knob, 6.0, theme::bg(ui.ctx()), Stroke::new(1.5_f32, theme::BLUE));
         let sr = ui.interact(track.expand2(Vec2::new(6.0, 8.0)), ui.id().with("er_zoom_slider"), Sense::click_and_drag());
         if let Some(p) = sr.interact_pointer_pos().filter(|_| sr.dragged() || sr.clicked()) {
             let f = ((p.x - track.left()) / track.width()).clamp(0.0, 1.0);

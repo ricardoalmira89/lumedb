@@ -218,7 +218,7 @@ fn ribbon(ctx: &egui::Context, app: &mut LumeDbApp) {
     let loc = selected_loc(app);
     let kind = app.selection.conn().and_then(|k| app.session(k)).map(|s| s.kind());
     egui::TopBottomPanel::top("ribbon")
-        .frame(egui::Frame::none().fill(theme::ribbon(ctx)).inner_margin(Margin::symmetric(6.0, 4.0)).stroke(Stroke::new(1.0, theme::border(ctx))))
+        .frame(egui::Frame::none().fill(theme::ribbon(ctx)).inner_margin(Margin::symmetric(6.0, 4.0)).stroke(Stroke::new(1.0_f32, theme::border(ctx))))
         .show(ctx, |ui| {
             egui::ScrollArea::horizontal().id_salt("ribbon_scroll").show(ui, |ui| {
                 ui.horizontal(|ui| {
@@ -302,7 +302,7 @@ fn ribbon(ctx: &egui::Context, app: &mut LumeDbApp) {
 fn status_bar(ctx: &egui::Context, app: &mut LumeDbApp) {
     egui::TopBottomPanel::bottom("status")
         .exact_height(24.0)
-        .frame(egui::Frame::none().fill(theme::panel(ctx)).inner_margin(Margin::symmetric(8.0, 3.0)).stroke(Stroke::new(1.0, theme::border(ctx))))
+        .frame(egui::Frame::none().fill(theme::panel(ctx)).inner_margin(Margin::symmetric(8.0, 3.0)).stroke(Stroke::new(1.0_f32, theme::border(ctx))))
         .show(ctx, |ui| {
             ui.horizontal_centered(|ui| {
                 let mut parts: Vec<String> = Vec::new();
@@ -395,7 +395,7 @@ fn nav_pane(ctx: &egui::Context, app: &mut LumeDbApp) {
     egui::SidePanel::left("navigation")
         .resizable(true)
         .default_width(260.0)
-        .frame(egui::Frame::none().fill(theme::bg(ctx)).inner_margin(Margin::same(6.0)).stroke(Stroke::new(1.0, theme::border(ctx))))
+        .frame(egui::Frame::none().fill(theme::bg(ctx)).inner_margin(Margin::same(6.0)).stroke(Stroke::new(1.0_f32, theme::border(ctx))))
         .show(ctx, |ui| {
             ui.add(
                 egui::TextEdit::singleline(&mut app.nav.nav_search)
@@ -1014,7 +1014,7 @@ fn info_pane(ctx: &egui::Context, app: &mut LumeDbApp) {
         .resizable(true)
         .default_width(270.0)
         .min_width(210.0)
-        .frame(egui::Frame::none().fill(theme::panel(ctx)).inner_margin(Margin::same(12.0)).stroke(Stroke::new(1.0, theme::border(ctx))))
+        .frame(egui::Frame::none().fill(theme::panel(ctx)).inner_margin(Margin::same(12.0)).stroke(Stroke::new(1.0_f32, theme::border(ctx))))
         .show_animated(ctx, app.nav.show_info, |ui| {
             let row = |ui: &mut egui::Ui, k: &str, v: &str| {
                 if v.is_empty() {
@@ -1184,7 +1184,7 @@ fn tab_bar(ui: &mut egui::Ui, app: &mut LumeDbApp) {
                     let frame = egui::Frame::none()
                         .fill(if active { theme::bg(&ctx) } else { theme::tab_inactive(&ctx) })
                         .rounding(Rounding { nw: 4.0, ne: 4.0, sw: 0.0, se: 0.0 })
-                        .stroke(Stroke::new(1.0, theme::border(&ctx)))
+                        .stroke(Stroke::new(1.0_f32, theme::border(&ctx)))
                         .inner_margin(Margin::symmetric(10.0, 5.0));
                     let mut close_rect = None;
                     let inner = frame.show(ui, |ui| {

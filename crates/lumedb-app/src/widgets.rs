@@ -32,7 +32,7 @@ pub fn ribbon_button(ui: &mut Ui, icon: &str, label: &str, color: Color32, dropd
 
 pub fn ribbon_separator(ui: &mut Ui) {
     let (rect, _) = ui.allocate_exact_size(egui::vec2(9.0, 52.0), Sense::hover());
-    ui.painter().vline(rect.center().x, rect.y_range(), egui::Stroke::new(1.0, theme::border(ui.ctx())));
+    ui.painter().vline(rect.center().x, rect.y_range(), egui::Stroke::new(1.0_f32, theme::border(ui.ctx())));
 }
 
 /// Flat toolbar button: colored icon and text.
@@ -53,7 +53,7 @@ pub fn toolbar(ui: &mut Ui, add: impl FnOnce(&mut Ui)) {
     egui::Frame::none()
         .fill(theme::ribbon(ui.ctx()))
         .inner_margin(egui::Margin::symmetric(6.0, 4.0))
-        .stroke(egui::Stroke::new(1.0, theme::border(ui.ctx())))
+        .stroke(egui::Stroke::new(1.0_f32, theme::border(ui.ctx())))
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
             // If it doesn't fit, it scrolls instead of widening the tab.
@@ -75,7 +75,7 @@ pub fn cell_grid(ui: &mut Ui, header: bool, fill: Option<Color32>) {
     } else if let Some(f) = fill {
         p.rect_filled(r, 0.0, f);
     }
-    let stroke = egui::Stroke::new(1.0, theme::grid(ui.ctx()));
+    let stroke = egui::Stroke::new(1.0_f32, theme::grid(ui.ctx()));
     p.vline(r.right(), r.y_range(), stroke);
     p.hline(r.x_range(), r.bottom(), stroke);
     // Breathing room between the grid line and the text.

@@ -172,7 +172,7 @@ pub fn error_banner(ui: &mut Ui, raw: &str) {
     let red = theme::RED;
     egui::Frame::none()
         .fill(red.gamma_multiply(0.10))
-        .stroke(egui::Stroke::new(1.0, red.gamma_multiply(0.45)))
+        .stroke(egui::Stroke::new(1.0_f32, red.gamma_multiply(0.45)))
         .rounding(6.0)
         .inner_margin(egui::Margin::symmetric(10.0, 8.0))
         .show(ui, |ui| {

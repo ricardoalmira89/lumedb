@@ -667,7 +667,7 @@ pub fn chart_ui(ui: &mut egui::Ui, r: &QueryResult, st: &mut ChartState, id: usi
                 pts.push(center + egui::vec2(a.cos() as f32, a.sin() as f32) * radius);
             }
             let color = palette[i % palette.len()];
-            p.add(egui::Shape::convex_polygon(pts, color, egui::Stroke::new(1.0, theme::bg(ui.ctx()))));
+            p.add(egui::Shape::convex_polygon(pts, color, egui::Stroke::new(1.0_f32, theme::bg(ui.ctx()))));
             angle += sweep;
             let ly = rect.top() + 20.0 + i as f32 * 18.0;
             let lx = center.x + radius + 40.0;
@@ -713,9 +713,9 @@ pub fn chart_ui(ui: &mut egui::Ui, r: &QueryResult, st: &mut ChartState, id: usi
                         let bars: Vec<Bar> = pts.iter().map(|p| Bar::new(p[0] - 0.4 + width * (k as f64 + 0.5), p[1]).width(width)).collect();
                         plot.bar_chart(BarChart::new(bars).name(name).color(color));
                     }
-                    ChartKind::Line => plot.line(Line::new(PlotPoints::from(pts)).name(name).color(color).width(2.0)),
-                    ChartKind::Area => plot.line(Line::new(PlotPoints::from(pts)).name(name).color(color).fill(0.0)),
-                    ChartKind::Scatter => plot.points(Points::new(PlotPoints::from(pts)).name(name).color(color).radius(3.0)),
+                    ChartKind::Line => plot.line(Line::new(PlotPoints::from(pts)).name(name).color(color).width(2.0_f32)),
+                    ChartKind::Area => plot.line(Line::new(PlotPoints::from(pts)).name(name).color(color).fill(0.0_f32)),
+                    ChartKind::Scatter => plot.points(Points::new(PlotPoints::from(pts)).name(name).color(color).radius(3.0_f32)),
                     ChartKind::Pie => {}
                 }
             }

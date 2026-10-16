@@ -65,7 +65,7 @@ pub fn apply(ctx: &egui::Context, dark_mode: bool) {
         v.extreme_bg_color = Color32::from_rgb(0x1E, 0x1F, 0x22);
         v.faint_bg_color = Color32::from_rgb(0x25, 0x27, 0x2A);
         v.selection.bg_fill = Color32::from_rgb(0x2E, 0x43, 0x6E);
-        v.selection.stroke = Stroke::new(1.0, Color32::WHITE);
+        v.selection.stroke = Stroke::new(1.0_f32, Color32::WHITE);
         v.widgets.hovered.weak_bg_fill = Color32::from_rgb(0x35, 0x3B, 0x45);
     } else {
         v.panel_fill = Color32::from_rgb(0xF3, 0xF3, 0xF3);
@@ -73,14 +73,14 @@ pub fn apply(ctx: &egui::Context, dark_mode: bool) {
         v.extreme_bg_color = Color32::WHITE;
         v.faint_bg_color = Color32::from_rgb(0xF5, 0xF8, 0xFC);
         v.selection.bg_fill = Color32::from_rgb(0xCC, 0xE4, 0xF7);
-        v.selection.stroke = Stroke::new(1.0, Color32::from_rgb(0x20, 0x20, 0x20));
+        v.selection.stroke = Stroke::new(1.0_f32, Color32::from_rgb(0x20, 0x20, 0x20));
         v.widgets.hovered.weak_bg_fill = Color32::from_rgb(0xE3, 0xEA, 0xF3);
         v.widgets.hovered.bg_fill = Color32::from_rgb(0xE3, 0xEA, 0xF3);
-        v.widgets.noninteractive.bg_stroke = Stroke::new(1.0, Color32::from_rgb(0xD6, 0xD6, 0xD6));
+        v.widgets.noninteractive.bg_stroke = Stroke::new(1.0_f32, Color32::from_rgb(0xD6, 0xD6, 0xD6));
     }
     // Thin border on text boxes and buttons (otherwise they are invisible on a white background).
     let edge = if dark_mode { Color32::from_rgb(0x4A, 0x4D, 0x52) } else { Color32::from_rgb(0xC8, 0xC8, 0xC8) };
-    v.widgets.inactive.bg_stroke = Stroke::new(1.0, edge);
+    v.widgets.inactive.bg_stroke = Stroke::new(1.0_f32, edge);
     v.window_rounding = Rounding::same(6.0);
     for w in [&mut v.widgets.inactive, &mut v.widgets.hovered, &mut v.widgets.active, &mut v.widgets.open] {
         w.rounding = Rounding::same(3.0);

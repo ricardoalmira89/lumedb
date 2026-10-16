@@ -438,7 +438,7 @@ impl QueryBuilder {
             if !r.intersects(rect) {
                 continue;
             }
-            painter.rect(r, 4.0, if dark { Color32::from_rgb(0x2B, 0x2D, 0x30) } else { Color32::WHITE }, Stroke::new(1.0, theme::border(ui.ctx())));
+            painter.rect(r, 4.0, if dark { Color32::from_rgb(0x2B, 0x2D, 0x30) } else { Color32::WHITE }, Stroke::new(1.0_f32, theme::border(ui.ctx())));
             let head = Rect::from_min_size(r.min, Vec2::new(BOX_W, HEAD_H));
             painter.rect_filled(head, egui::Rounding { nw: 4.0, ne: 4.0, sw: 0.0, se: 0.0 }, theme::kind_color(self.kind));
             let title = if t.alias == t.table { t.table.clone() } else { format!("{} ({})", t.table, t.alias) };
@@ -471,7 +471,12 @@ impl QueryBuilder {
             for (k, (c, on)) in rows.iter().enumerate() {
                 let rr = Rect::from_min_size(r.min + Vec2::new(0.0, HEAD_H + 3.0 + ROW_H * k as f32), Vec2::new(BOX_W, ROW_H));
                 let check = Rect::from_min_size(rr.min + Vec2::new(8.0, 3.0), Vec2::splat(14.0));
-                painter.rect(check, 2.0, if *on { theme::BLUE } else { Color32::TRANSPARENT }, Stroke::new(1.0, if *on { theme::BLUE } else { theme::MUTED }));
+                painter.rect(
+                    check,
+                    2.0,
+                    if *on { theme::BLUE } else { Color32::TRANSPARENT },
+                    Stroke::new(1.0_f32, if *on { theme::BLUE } else { theme::MUTED }),
+                );
                 if *on {
                     painter.text(check.center(), egui::Align2::CENTER_CENTER, icon::CHECK, egui::FontId::proportional(10.0), Color32::WHITE);
                 }
@@ -511,7 +516,7 @@ impl QueryBuilder {
             let (Some(a), Some(b)) = (find(&j.a), find(&j.b)) else { continue };
             let (p1, p2) = if a.center().x < b.center().x { (a.right_center(), b.left_center()) } else { (a.left_center(), b.right_center()) };
             let mid = Pos2::new((p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0);
-            let stroke = Stroke::new(1.5, theme::ORANGE);
+            let stroke = Stroke::new(1.5_f32, theme::ORANGE);
             painter.line_segment([p1, Pos2::new(mid.x, p1.y)], stroke);
             painter.line_segment([Pos2::new(mid.x, p1.y), Pos2::new(mid.x, p2.y)], stroke);
             painter.line_segment([Pos2::new(mid.x, p2.y), p2], stroke);
@@ -575,7 +580,7 @@ impl QueryBuilder {
         // Join in progress (dragging from a column).
         if let Some((from, p)) = &self.linking {
             if let Some(ptr) = ui.ctx().pointer_latest_pos() {
-                painter.line_segment([*p, ptr], Stroke::new(1.5, theme::BLUE));
+                painter.line_segment([*p, ptr], Stroke::new(1.5_f32, theme::BLUE));
             }
             if drop_link || ui.input(|i| i.pointer.any_released()) {
                 let target =

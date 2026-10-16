@@ -139,15 +139,14 @@ fn xor8(a: &mut Block8, b: &[u8]) {
 fn decrypt_v11(data: &[u8]) -> Result<String> {
     let (bf, mut cv) = blowfish_v11();
     let mut out = Vec::with_capacity(data.len());
-    let mut chunks = data.chunks_exact(8);
-    for chunk in &mut chunks {
-        let mut block: Block8 = chunk.try_into().unwrap();
+    let (blocks, rest) = data.as_chunks::<8>();
+    for chunk in blocks {
+        let mut block: Block8 = *chunk;
         bf.decrypt_block((&mut block).into());
         xor8(&mut block, &cv);
         out.extend_from_slice(&block);
         xor8(&mut cv, chunk);
     }
-    let rest = chunks.remainder();
     if !rest.is_empty() {
         bf.encrypt_block((&mut cv).into());
         out.extend(rest.iter().zip(cv).map(|(a, b)| a ^ b));
@@ -159,15 +158,14 @@ pub fn encrypt_v11(plain: &str) -> String {
     let (bf, mut cv) = blowfish_v11();
     let data = plain.as_bytes();
     let mut out = Vec::with_capacity(data.len());
-    let mut chunks = data.chunks_exact(8);
-    for chunk in &mut chunks {
-        let mut block: Block8 = chunk.try_into().unwrap();
+    let (blocks, rest) = data.as_chunks::<8>();
+    for chunk in blocks {
+        let mut block: Block8 = *chunk;
         xor8(&mut block, &cv);
         bf.encrypt_block((&mut block).into());
         xor8(&mut cv, &block);
         out.extend_from_slice(&block);
     }
-    let rest = chunks.remainder();
     if !rest.is_empty() {
         bf.encrypt_block((&mut cv).into());
         out.extend(rest.iter().zip(cv).map(|(a, b)| a ^ b));
