@@ -55,7 +55,15 @@ NaviDog is an independent implementation. To keep it that way:
 - The ER model is reverse-engineered (diagram of the existing database + SQL export); it is not a full logical/physical designer.
 - Automation runs while NaviDog is open or from cron (`navidog --run-job "name"`); it does not send email.
 - No function debugger, reports or cloud sync.
-- Passwords are stored in plain text in `~/.config/navidog/connections.json`.
+
+## Passwords
+
+Connection passwords, SSH secrets and AI API keys are stored in the system keyring (GNOME Keyring /
+KWallet via Secret Service on Linux, Keychain on macOS, Credential Manager on Windows), never in the
+configuration files. Each connection has a "Save password" option; when it is off, NaviDog asks for
+the password when connecting. Without a keyring (or with `NAVIDOG_NO_KEYRING=1`) saved secrets stay
+in the files, which are created readable only by your user (0600). Building on Linux needs
+`libdbus-1-dev` (Debian/Ubuntu) or `dbus-devel` (Fedora).
 
 ## Usage
 
@@ -63,6 +71,7 @@ NaviDog is an independent implementation. To keep it that way:
 cargo run --release
 cargo test                        # SQLite
 NAVIDOG_TEST_LIVE=1 cargo test    # also PostgreSQL (port 55432) and MySQL (33306), password "navidog"
+NAVIDOG_TEST_KEYRING=1 cargo test # also the system keyring (needs an unlocked keyring)
 ```
 
 Containers for the live tests:

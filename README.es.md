@@ -55,7 +55,15 @@ NaviDog es una implementación independiente. Para que siga siéndolo:
 - El modelo ER es inverso (diagrama de la base existente + exportar SQL); no es un diseñador lógico/físico completo.
 - La automatización se ejecuta mientras NaviDog está abierto o desde cron (`navidog --run-job "nombre"`); no envía correos.
 - Sin depurador de funciones, informes, ni sincronización en la nube.
-- Las contraseñas se guardan en texto plano en `~/.config/navidog/connections.json`.
+
+## Contraseñas
+
+Las contraseñas de las conexiones, los secretos SSH y las claves de API de IA se guardan en el llavero
+del sistema (Llavero de GNOME / KWallet mediante Secret Service en Linux, Keychain en macOS,
+Administrador de credenciales en Windows), nunca en los archivos de configuración. Cada conexión tiene
+la opción «Guardar contraseña»; si está desactivada, NaviDog la pide al conectar. Sin llavero (o con
+`NAVIDOG_NO_KEYRING=1`) los secretos guardados quedan en los archivos, que se crean legibles solo por tu
+usuario (0600). Para compilar en Linux hace falta `libdbus-1-dev` (Debian/Ubuntu) o `dbus-devel` (Fedora).
 
 ## Uso
 
@@ -63,6 +71,7 @@ NaviDog es una implementación independiente. Para que siga siéndolo:
 cargo run --release
 cargo test                        # SQLite
 NAVIDOG_TEST_LIVE=1 cargo test    # además PostgreSQL (puerto 55432) y MySQL (33306), contraseña «navidog»
+NAVIDOG_TEST_KEYRING=1 cargo test # además el llavero del sistema (requiere un llavero desbloqueado)
 ```
 
 Contenedores para las pruebas en vivo:

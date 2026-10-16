@@ -85,17 +85,36 @@ fn path() -> Result<PathBuf> {
     Ok(config_dir()?.join("ai.json"))
 }
 
+const ANTHROPIC_SECRET: &str = "ai/anthropic";
+const OPENAI_SECRET: &str = "ai/openai";
+
+/// Loads the settings; the API keys come from the keyring. Keys still in plain text in the file
+/// are moved to the keyring.
 pub fn load() -> AiConfig {
-    path().ok().and_then(|p| std::fs::read_to_string(p).ok()).and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default()
+    let mut cfg: AiConfig = path().ok().and_then(|p| std::fs::read_to_string(p).ok()).and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default();
+    let plain = !cfg.anthropic_key.is_empty() || !cfg.openai_key.is_empty();
+    for (account, key) in [(ANTHROPIC_SECRET, &mut cfg.anthropic_key), (OPENAI_SECRET, &mut cfg.openai_key)] {
+        if key.is_empty() {
+            *key = crate::secrets::get(account).unwrap_or_default();
+        }
+    }
+    if plain && crate::secrets::available() {
+        let _ = save(&cfg);
+    }
+    cfg
 }
 
+/// Saves the settings; the API keys go to the keyring (or stay in the file, readable only by the
+/// user, when there is no keyring).
 pub fn save(cfg: &AiConfig) -> Result<()> {
-    let p = path()?;
-    if let Some(d) = p.parent() {
-        std::fs::create_dir_all(d)?;
+    let mut out = cfg.clone();
+    if crate::secrets::available() {
+        crate::secrets::set(ANTHROPIC_SECRET, out.anthropic_key.trim())?;
+        crate::secrets::set(OPENAI_SECRET, out.openai_key.trim())?;
+        out.anthropic_key.clear();
+        out.openai_key.clear();
     }
-    std::fs::write(&p, serde_json::to_string_pretty(cfg)?)?;
-    Ok(())
+    crate::config::write_private(&path()?, &serde_json::to_string_pretty(&out)?)
 }
 
 // ---------------------------------------------------------------- Schema context

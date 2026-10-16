@@ -96,6 +96,8 @@ pub struct Session {
     pub objects: HashMap<(String, String), Vec<DbObject>>,
     pub stats: HashMap<(String, String), Vec<TableStats>>,
     pub version: String,
+    /// The password was already asked for in this session (connections that do not save it).
+    pub unlocked: bool,
 }
 
 impl Session {
@@ -187,6 +189,8 @@ pub struct Request {
 pub enum Action {
     Select(Selection),
     Connect(ConnKey),
+    /// Password typed in [`views::connection::PasswordPrompt`].
+    Unlock { key: ConnKey, password: String, ssh_password: Option<String>, remember: bool },
     Disconnect(ConnKey),
     OpenDatabase(ConnKey, String),
     CloseDatabase(ConnKey, String),
@@ -301,10 +305,20 @@ impl NaviDogApp {
         };
         let uid = app.id();
         app.tabs.push(Entry { uid, view: Box::new(views::objects::ObjectsTab::default()) });
+        // Moves API keys still in plain text to the keyring.
+        let _ = navidog_core::ai::load();
         match config::load_connections() {
-            Ok(cfgs) => cfgs.into_iter().for_each(|c| {
-                app.add_session(c);
-            }),
+            Ok(cfgs) => {
+                if config::plain_text_secrets(&cfgs) {
+                    app.dialog = Some(crate::notice::Notice::warning(
+                        tr("No system keyring"),
+                        tr("No system keyring (such as GNOME Keyring or KWallet) was found, so saved passwords are kept in a file that only your user can read. Install or unlock a keyring to store them encrypted."),
+                    ));
+                }
+                cfgs.into_iter().for_each(|c| {
+                    app.add_session(c);
+                });
+            }
             Err(e) => app.error(tr("Could not load connections"), format!("{e:#}")),
         }
         app
@@ -334,6 +348,7 @@ impl NaviDogApp {
             objects: HashMap::new(),
             stats: HashMap::new(),
             version: String::new(),
+            unlocked: false,
         });
         key
     }
@@ -366,6 +381,11 @@ impl NaviDogApp {
         if s.conns.contains_key(&dbk) {
             return;
         }
+        if s.cfg.needs_password_prompt() && !s.unlocked {
+            let prompt = views::connection::PasswordPrompt::new(key, &s.cfg);
+            self.open_window(Box::new(prompt));
+            return;
+        }
         let mut cfg = s.cfg.clone();
         if s.is_pg() {
             cfg.database = dbk.clone();
@@ -376,9 +396,13 @@ impl NaviDogApp {
 
     pub fn dispatch(&mut self, req: Request, ctx: &egui::Context) {
         self.ensure_conn(req.loc.conn, &req.loc.db, ctx);
-        self.pending.insert(req.id, req.owner);
         let Some(s) = self.session_mut(req.loc.conn) else { return };
         let dbk = s.db_key(&req.loc.db);
+        if !s.conns.contains_key(&dbk) {
+            return; // waiting for the password; the request is dropped
+        }
+        self.pending.insert(req.id, req.owner);
+        let Some(s) = self.session_mut(req.loc.conn) else { return };
         if let Some(c) = s.conns.get_mut(&dbk) {
             if c.status == Status::Connected {
                 c.worker.send(req.id, req.task);
@@ -638,6 +662,22 @@ impl NaviDogApp {
                 self.selection = sel;
             }
             Action::Connect(key) => self.connect(key, ctx),
+            Action::Unlock { key, password, ssh_password, remember } => {
+                if let Some(s) = self.session_mut(key) {
+                    s.unlocked = true;
+                    s.cfg.password = password;
+                    if let Some(p) = ssh_password {
+                        s.cfg.ssh.password = p;
+                    }
+                    if remember {
+                        s.cfg.save_password = true;
+                    }
+                }
+                if remember {
+                    self.persist();
+                }
+                self.connect(key, ctx);
+            }
             Action::Disconnect(key) => self.disconnect(key),
             Action::OpenDatabase(key, db) => {
                 let ready = self.session(key).is_some_and(|s| s.db_status(&db) == Status::Connected && s.schemas_of(&db).is_some());
@@ -689,6 +729,7 @@ impl NaviDogApp {
             Action::DuplicateConnection(key) => {
                 if let Some(s) = self.session(key) {
                     let mut cfg = s.cfg.clone();
+                    cfg.id = config::new_id();
                     cfg.name = trf!("{name} (copy)", name = cfg.name);
                     self.add_session(cfg);
                     self.persist();

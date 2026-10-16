@@ -114,6 +114,13 @@ impl View for ConnectionDialog {
                             }
                         });
                         ui.end_row();
+                        ui.label("");
+                        ui.checkbox(&mut c.save_password, tr("Save password")).on_hover_text(if navidog_core::secrets::available() {
+                            tr("Stored in the system keyring. If unchecked, it is asked for when connecting.")
+                        } else {
+                            tr("No system keyring was found: it is stored in a file only you can read. If unchecked, it is asked for when connecting.")
+                        });
+                        ui.end_row();
                         ui.label(if c.kind == DbKind::Postgres { tr("Initial database:") } else { tr("Database:") });
                         ui.add(egui::TextEdit::singleline(&mut c.database).desired_width(w).hint_text(if c.kind == DbKind::Postgres { "postgres" } else { tr("(all)") }));
                         ui.end_row();
@@ -222,5 +229,72 @@ impl View for ConnectionDialog {
                 }
             });
         });
+    }
+}
+
+/// Asks for the password of a connection that does not save it.
+pub struct PasswordPrompt {
+    key: ConnKey,
+    name: String,
+    password: String,
+    ssh_password: Option<String>,
+    remember: bool,
+    focused: bool,
+}
+
+impl PasswordPrompt {
+    pub fn new(key: ConnKey, cfg: &ConnectionConfig) -> Self {
+        let ssh = cfg.ssh.enabled && cfg.ssh.auth == SshAuth::Password && cfg.ssh.password.is_empty();
+        Self { key, name: cfg.name.clone(), password: String::new(), ssh_password: ssh.then(String::new), remember: false, focused: false }
+    }
+}
+
+impl View for PasswordPrompt {
+    fn title(&self, _: &Cx) -> String {
+        trf!("Connect to \"{name}\"", name = self.name)
+    }
+    fn icon(&self) -> (&'static str, Color32) {
+        (icon::LOCK_KEY, theme::BLUE)
+    }
+    fn window_size(&self) -> egui::Vec2 {
+        egui::vec2(380.0, 170.0)
+    }
+    fn key(&self) -> Option<String> {
+        Some(format!("password:{}", self.key))
+    }
+
+    fn ui(&mut self, ui: &mut egui::Ui, cx: &mut Cx) {
+        let mut submit = false;
+        egui::Grid::new("password_prompt").num_columns(2).spacing([8.0, 8.0]).show(ui, |ui| {
+            ui.label(tr("Password:"));
+            let r = ui.add(egui::TextEdit::singleline(&mut self.password).password(true).desired_width(240.0));
+            if !self.focused {
+                r.request_focus();
+                self.focused = true;
+            }
+            submit |= r.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+            ui.end_row();
+            if let Some(p) = &mut self.ssh_password {
+                ui.label(tr("SSH password:"));
+                let r = ui.add(egui::TextEdit::singleline(p).password(true).desired_width(240.0));
+                submit |= r.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+                ui.end_row();
+            }
+            ui.label("");
+            ui.checkbox(&mut self.remember, tr("Save password"));
+            ui.end_row();
+        });
+        ui.add_space(8.0);
+        ui.horizontal(|ui| {
+            submit |= ui.button(RichText::new(tr("Connect")).strong()).clicked();
+            if ui.button(tr("Cancel")).clicked() {
+                cx.close();
+            }
+        });
+        if submit {
+            let ssh = self.ssh_password.take();
+            cx.act(Action::Unlock { key: self.key, password: std::mem::take(&mut self.password), ssh_password: ssh, remember: self.remember });
+            cx.close();
+        }
     }
 }

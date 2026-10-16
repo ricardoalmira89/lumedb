@@ -107,13 +107,17 @@ pub struct SslConfig {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ConnectionConfig {
+    /// Stable identifier; names the connection's secrets in the keyring.
+    pub id: String,
     pub name: String,
     pub kind: DbKind,
     pub host: String,
     pub port: u16,
     pub user: String,
-    // TODO: store in the system keyring instead of plain text.
+    /// Kept in the keyring, not in `connections.json` (see [`save_connections`]).
     pub password: String,
+    /// Remember the password (and SSH secrets). If false, they are asked for on connecting.
+    pub save_password: bool,
     pub database: String,
     /// File path (SQLite only).
     pub path: String,
@@ -128,12 +132,14 @@ pub struct ConnectionConfig {
 impl Default for ConnectionConfig {
     fn default() -> Self {
         Self {
+            id: new_id(),
             name: String::new(),
             kind: DbKind::Postgres,
             host: "localhost".into(),
             port: DbKind::Postgres.default_port(),
             user: String::new(),
             password: String::new(),
+            save_password: true,
             database: String::new(),
             path: String::new(),
             group: String::new(),
@@ -163,20 +169,115 @@ fn store_path() -> Result<PathBuf> {
     Ok(config_dir()?.join("connections.json"))
 }
 
+/// Random identifier for a new connection.
+pub fn new_id() -> String {
+    use std::hash::{BuildHasher, Hasher};
+    let mut h = std::collections::hash_map::RandomState::new().build_hasher();
+    h.write_u128(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or_default());
+    format!("{:016x}", h.finish())
+}
+
+impl ConnectionConfig {
+    /// The secrets of this connection with their keyring names.
+    fn secrets_mut(&mut self) -> [(String, &mut String); 3] {
+        let id = &self.id;
+        [
+            (format!("conn/{id}/password"), &mut self.password),
+            (format!("conn/{id}/ssh-password"), &mut self.ssh.password),
+            (format!("conn/{id}/ssh-passphrase"), &mut self.ssh.passphrase),
+        ]
+    }
+
+    /// Whether a password has to be asked for before connecting.
+    pub fn needs_password_prompt(&self) -> bool {
+        !self.save_password && self.kind != DbKind::Sqlite
+    }
+}
+
+/// Writes a file only the current user can read (0600 on Unix), creating its folder (0700).
+pub fn write_private(path: &std::path::Path, contents: &str) -> Result<()> {
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir)?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700));
+        }
+    }
+    #[cfg(unix)]
+    {
+        use std::io::Write;
+        use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+        let mut f = std::fs::OpenOptions::new().write(true).create(true).truncate(true).mode(0o600).open(path)?;
+        // `mode` only applies to new files; tighten existing ones too.
+        f.set_permissions(std::fs::Permissions::from_mode(0o600))?;
+        f.write_all(contents.as_bytes())?;
+        Ok(())
+    }
+    #[cfg(not(unix))]
+    {
+        std::fs::write(path, contents)?;
+        Ok(())
+    }
+}
+
+/// Loads the connections and their secrets from the keyring. Passwords still found in plain text
+/// in the file (older versions, or no keyring at the time) are moved to the keyring.
 pub fn load_connections() -> Result<Vec<ConnectionConfig>> {
     let path = store_path()?;
     if !path.exists() {
         return Ok(Vec::new());
     }
     let data = std::fs::read_to_string(&path)?;
-    Ok(serde_json::from_str(&data)?)
+    let mut conns: Vec<ConnectionConfig> = serde_json::from_str(&data)?;
+    let mut migrate = false;
+    let mut seen = std::collections::HashSet::new();
+    for c in &mut conns {
+        if c.id.is_empty() || !seen.insert(c.id.clone()) {
+            c.id = new_id();
+            seen.insert(c.id.clone());
+            migrate = true;
+        }
+        let save = c.save_password;
+        for (account, value) in c.secrets_mut() {
+            if !value.is_empty() {
+                migrate = true;
+            } else if save {
+                if let Some(v) = crate::secrets::get(&account) {
+                    *value = v;
+                }
+            }
+        }
+    }
+    if migrate && crate::secrets::available() {
+        save_connections(&conns)?;
+    }
+    Ok(conns)
 }
 
+/// Saves the connections. Secrets go to the keyring (or stay in the file, readable only by the
+/// user, when there is no keyring); with `save_password` off they are not stored anywhere.
 pub fn save_connections(conns: &[ConnectionConfig]) -> Result<()> {
-    let path = store_path()?;
-    if let Some(dir) = path.parent() {
-        std::fs::create_dir_all(dir)?;
+    let keyring = crate::secrets::available();
+    let mut out = conns.to_vec();
+    for c in &mut out {
+        let save = c.save_password;
+        for (account, value) in c.secrets_mut() {
+            if !save {
+                crate::secrets::delete(&account);
+                value.clear();
+            } else if keyring {
+                crate::secrets::set(&account, value)?;
+                value.clear();
+            }
+        }
     }
-    std::fs::write(&path, serde_json::to_string_pretty(conns)?)?;
-    Ok(())
+    let ids: std::collections::HashSet<&str> = conns.iter().map(|c| c.id.as_str()).collect();
+    crate::secrets::prune("conn/", |a| a.split('/').nth(1).is_some_and(|id| ids.contains(id)));
+    write_private(&store_path()?, &serde_json::to_string_pretty(&out)?)
+}
+
+/// Whether some saved secret is in plain text because there is no keyring.
+pub fn plain_text_secrets(conns: &[ConnectionConfig]) -> bool {
+    !crate::secrets::available() && conns.iter().any(|c| c.save_password && (!c.password.is_empty() || !c.ssh.password.is_empty() || !c.ssh.passphrase.is_empty()))
 }

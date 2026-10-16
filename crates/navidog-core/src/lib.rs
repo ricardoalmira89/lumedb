@@ -13,6 +13,7 @@ pub mod i18n;
 pub mod meta;
 pub mod ncx;
 pub mod net;
+pub mod secrets;
 pub mod sql;
 pub mod store;
 pub mod sync;
