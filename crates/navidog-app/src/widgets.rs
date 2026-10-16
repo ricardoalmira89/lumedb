@@ -73,7 +73,7 @@ pub fn toolbar(ui: &mut Ui, add: impl FnOnce(&mut Ui)) {
 }
 
 /// Paints the right and bottom border of a cell, like a spreadsheet.
-pub fn cell_grid(ui: &Ui, header: bool, fill: Option<Color32>) {
+pub fn cell_grid(ui: &mut Ui, header: bool, fill: Option<Color32>) {
     let r = ui.max_rect().expand2(ui.spacing().item_spacing * 0.5);
     let p = ui.painter();
     if header {
@@ -84,10 +84,52 @@ pub fn cell_grid(ui: &Ui, header: bool, fill: Option<Color32>) {
     let stroke = egui::Stroke::new(1.0, theme::grid(ui.ctx()));
     p.vline(r.right(), r.y_range(), stroke);
     p.hline(r.x_range(), r.bottom(), stroke);
+    // Breathing room between the grid line and the text.
+    ui.add_space(4.0);
 }
 
+/// Width of the row indicator column, the narrow first column of the grids.
+pub const INDICATOR_W: f32 = 16.0;
+
+/// Marks of the row indicator column, as in Navicat.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum RowMark {
+    None,
+    Current,
+    New,
+    Deleted,
+}
+
+/// Row indicator cell: ▶ on the current row, * on new rows, ✕ on deleted ones.
+pub fn row_indicator(ui: &mut Ui, mark: RowMark) {
+    let r = ui.max_rect();
+    let c = r.center();
+    let color = theme::text(ui.ctx()).gamma_multiply(0.7);
+    let p = ui.painter();
+    match mark {
+        RowMark::None => {}
+        RowMark::Current => {
+            let pts = vec![egui::pos2(c.x - 2.5, c.y - 4.0), egui::pos2(c.x + 3.0, c.y), egui::pos2(c.x - 2.5, c.y + 4.0)];
+            p.add(egui::Shape::convex_polygon(pts, color, egui::Stroke::NONE));
+        }
+        RowMark::New => {
+            p.text(c, Align2::CENTER_CENTER, "*", FontId::proportional(13.0), color);
+        }
+        RowMark::Deleted => {
+            p.text(c, Align2::CENTER_CENTER, "✕", FontId::proportional(10.0), theme::RED);
+        }
+    }
+}
+
+/// Value of a grid cell. Numbers are right-aligned, like in spreadsheets and Navicat.
 pub fn value_label(ui: &mut Ui, v: &Value) {
     match v.display() {
+        Some(s) if matches!(v, Value::Number(_)) => {
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                ui.add_space(6.0);
+                ui.add(egui::Label::new(s).truncate().selectable(false));
+            });
+        }
         Some(s) => {
             let text = s.lines().next().unwrap_or("");
             let rich = if matches!(v, Value::Bytes(_)) { RichText::new(text).color(theme::MUTED) } else { RichText::new(text) };
@@ -103,6 +145,10 @@ pub fn value_label(ui: &mut Ui, v: &Value) {
 #[derive(Default)]
 pub struct GridState {
     pub selected: Option<(usize, usize)>,
+    /// Whole rows selected from the row indicator column (display positions). Shift+click
+    /// selects a range, Ctrl+click adds or removes a row.
+    pub sel_rows: std::collections::BTreeSet<usize>,
+    anchor: Option<usize>,
     pub sort: Option<(usize, bool)>,
     order: Vec<usize>,
     rows_seen: usize,
@@ -118,7 +164,31 @@ impl GridState {
         &self.order
     }
 
+    /// Click on a row (indicator column, or a cell with Shift/Ctrl) at display position `pos`.
+    fn click_row(&mut self, pos: usize, mods: egui::Modifiers) {
+        match self.anchor {
+            Some(a) if mods.shift => {
+                if !mods.command {
+                    self.sel_rows.clear();
+                }
+                self.sel_rows.extend(a.min(pos)..=a.max(pos));
+            }
+            _ if mods.command => {
+                if !self.sel_rows.remove(&pos) {
+                    self.sel_rows.insert(pos);
+                }
+                self.anchor = Some(pos);
+            }
+            _ => {
+                self.sel_rows = std::collections::BTreeSet::from([pos]);
+                self.anchor = Some(pos);
+            }
+        }
+    }
+
     fn apply_sort(&mut self, r: &QueryResult) {
+        self.sel_rows.clear();
+        self.anchor = None;
         self.order = (0..r.rows.len()).collect();
         if let Some((c, asc)) = self.sort {
             self.order.sort_by(|&a, &b| {
@@ -146,15 +216,21 @@ pub fn results_grid(ui: &mut Ui, id: impl std::hash::Hash, r: &QueryResult, st: 
     let order: Vec<usize> = st.order(r).to_vec();
     let mut new_sort = None;
     ui.push_id(id, |ui| {
-        egui::ScrollArea::horizontal().auto_shrink(false).show(ui, |ui| {
+        // Solid scroll bars (with their own space, as in Navicat): floating ones cover the last
+        // row and take the clicks meant for its cells.
+        ui.spacing_mut().scroll = egui::style::ScrollStyle::solid();
+        egui::ScrollArea::horizontal().auto_shrink(false).drag_to_scroll(false).show(ui, |ui| {
             let sel_fill = ui.visuals().selection.bg_fill;
+            let row_fill = theme::row_selected(ui.ctx());
             TableBuilder::new(ui)
                 .striped(false)
+                // Dragging the content to scroll would take the presses that select and edit cells.
+                .drag_to_scroll(false)
                 .resizable(true)
                 .auto_shrink(false)
                 .sense(Sense::click())
                 .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                .column(Column::exact(44.0))
+                .column(Column::exact(crate::widgets::INDICATOR_W))
                 .columns(Column::initial(140.0).at_least(40.0).clip(true), r.columns.len())
                 .header(22.0, |mut h| {
                     h.col(|ui| cell_grid(ui, true, None));
@@ -179,19 +255,34 @@ pub fn results_grid(ui: &mut Ui, id: impl std::hash::Hash, r: &QueryResult, st: 
                 })
                 .body(|body| {
                     body.rows(21.0, order.len(), |mut row| {
-                        let i = order[row.index()];
-                        row.col(|ui| {
+                        let pos = row.index();
+                        let i = order[pos];
+                        let in_rows = st.sel_rows.contains(&pos);
+                        let (_, indicator) = row.col(|ui| {
                             cell_grid(ui, true, None);
-                            ui.label(RichText::new((row_index_label(i)).to_string()).size(11.0).color(theme::MUTED));
+                            let current = st.selected.is_some_and(|(r, _)| r == i);
+                            row_indicator(ui, if current { RowMark::Current } else { RowMark::None });
                         });
+                        if indicator.clicked() {
+                            st.click_row(pos, indicator.ctx.input(|i| i.modifiers));
+                            st.selected = Some((i, 0));
+                        }
                         for (ci, v) in r.rows[i].iter().enumerate() {
                             let selected = st.selected == Some((i, ci));
-                            let fill = if selected { Some(sel_fill) } else { None };
+                            let in_row = st.selected.is_some_and(|(r, _)| r == i);
+                            let fill = if selected || in_rows { Some(sel_fill) } else if in_row { Some(row_fill) } else { None };
                             let (_, resp) = row.col(|ui| {
                                 cell_grid(ui, false, fill);
                                 value_label(ui, v);
                             });
                             if resp.clicked() {
+                                let mods = resp.ctx.input(|i| i.modifiers);
+                                if mods.shift || mods.command {
+                                    st.click_row(pos, mods);
+                                } else {
+                                    st.sel_rows.clear();
+                                    st.anchor = Some(pos);
+                                }
                                 st.selected = Some((i, ci));
                             }
                             resp.context_menu(|ui| {
@@ -224,10 +315,18 @@ pub fn results_grid(ui: &mut Ui, id: impl std::hash::Hash, r: &QueryResult, st: 
         st.sort = s;
         st.apply_sort(r);
     }
-}
-
-fn row_index_label(i: usize) -> usize {
-    i + 1
+    // Ctrl+C with whole rows selected copies them as tab-separated text, with a header line.
+    let copy = ui.input(|i| i.events.iter().any(|e| matches!(e, egui::Event::Copy)));
+    if copy && !st.sel_rows.is_empty() && ui.memory(|m| m.focused().is_none()) {
+        let mut out = r.columns.join("\t");
+        for &pos in &st.sel_rows {
+            let Some(&i) = st.order.get(pos) else { continue };
+            let cells: Vec<String> = r.rows[i].iter().map(|v| v.to_text().unwrap_or_else(|| "NULL".into())).collect();
+            out.push('\n');
+            out.push_str(&cells.join("\t"));
+        }
+        ui.ctx().copy_text(out);
+    }
 }
 
 /// Highlights SQL: keywords, strings, numbers, comments and identifiers.

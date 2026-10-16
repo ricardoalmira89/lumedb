@@ -824,6 +824,10 @@ fn group_node(ui: &mut egui::Ui, app: &mut NaviDogApp, loc: &Loc, g: ObjGroup) {
         .show_header(ui, |ui| ui.add(egui::SelectableLabel::new(selected, job)))
         .body(|ui| {
             for (label, isel, obj) in items {
+                if let Some(o) = obj.as_ref().filter(|o| o.kind == ObjectKind::Table) {
+                    table_node(ui, app, loc, &label, &isel, o, (ic, color));
+                    continue;
+                }
                 let job = icon_text(ic, color, &label, ui);
                 let r = ui.add(egui::SelectableLabel::new(app.selection == isel, job));
                 if r.clicked() {
@@ -862,6 +866,74 @@ fn group_node(ui: &mut egui::Ui, app: &mut NaviDogApp, loc: &Loc, g: ObjGroup) {
             ui.close_menu();
         }
     });
+}
+
+/// Table in the tree, expandable like in Navicat: Fields, Indexes, Foreign Keys, Checks and
+/// Triggers. Its structure is read the first time it is opened.
+fn table_node(ui: &mut egui::Ui, app: &mut NaviDogApp, loc: &Loc, label: &str, isel: &Selection, obj: &DbObject, (ic, color): (&str, Color32)) {
+    let id = ui.make_persistent_id(("table", loc, &obj.name));
+    let state = egui::collapsing_header::CollapsingState::load_with_default_open(ui.ctx(), id, false);
+    let open = state.is_open();
+    let job = icon_text(ic, color, label, ui);
+    let selected = app.selection == *isel;
+    let tree = app.session(loc.conn).and_then(|s| s.table_tree(loc, &obj.name)).cloned();
+    let triggers: Vec<String> = app
+        .session(loc.conn)
+        .and_then(|s| s.objects_at(loc))
+        .map(|v| v.iter().filter(|o| o.kind == ObjectKind::Trigger && o.detail == obj.name).map(|o| o.name.clone()).collect())
+        .unwrap_or_default();
+    let mut design = false;
+    let header = state.show_header(ui, |ui| ui.add(egui::SelectableLabel::new(selected, job)));
+    let (_, inner, _) = header.body(|ui| {
+        let Some(t) = &tree else {
+            ui.spinner();
+            return;
+        };
+        let fields: Vec<(String, String, bool)> = t.fields.clone();
+        let simple = |v: &[String]| v.iter().map(|n| (n.clone(), String::new(), false)).collect::<Vec<_>>();
+        let groups: [(&str, &str, Color32, Vec<(String, String, bool)>); 5] = [
+            ("Fields", icon::COLUMNS, theme::BLUE, fields),
+            ("Indexes", icon::SORT_ASCENDING, theme::BLUE, simple(&t.indexes)),
+            ("Foreign Keys", icon::LINK, theme::BLUE, simple(&t.foreign_keys)),
+            ("Checks", icon::CHECK_CIRCLE, theme::BLUE, simple(&t.checks)),
+            ("Triggers", icon::LIGHTNING, theme::ORANGE, simple(&triggers)),
+        ];
+        for (title, gic, gcolor, items) in groups {
+            let gid = id.with(title);
+            let header = egui::collapsing_header::CollapsingState::load_with_default_open(ui.ctx(), gid, false)
+                .show_header(ui, |ui| ui.add(egui::SelectableLabel::new(false, icon_text(gic, gcolor, tr(title), ui))));
+            let (_, gr, _) = header.body(|ui| {
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
+                for (name, ty, pk) in items {
+                    let (lic, lcolor) = if pk { (icon::KEY, theme::ORANGE) } else { (gic, theme::MUTED) };
+                    let mut job = icon_text(lic, lcolor, &name, ui);
+                    if !ty.is_empty() {
+                        job.append(&format!("  {ty}"), 0.0, egui::TextFormat { color: theme::MUTED, font_id: egui::FontId::proportional(12.0), ..Default::default() });
+                    }
+                    if ui.add(egui::SelectableLabel::new(false, job)).double_clicked() {
+                        design = true;
+                    }
+                }
+            });
+            if gr.inner.double_clicked() {
+                toggle(ui, gid, false);
+            }
+        }
+    });
+    if open && tree.is_none() {
+        app.push(Action::LoadTableTree(loc.clone(), obj.name.clone()));
+    }
+    if design {
+        app.push(Action::DesignTable(loc.clone(), Some(obj.name.clone())));
+    }
+    let r = inner.inner;
+    if r.clicked() {
+        app.push(Action::Select(isel.clone()));
+    }
+    if r.double_clicked() {
+        open_item(app, loc, isel, Some(obj));
+    }
+    r.context_menu(|ui| item_menu(ui, app, loc, isel, Some(obj)));
 }
 
 /// Opens or closes a collapsible tree node.
@@ -1204,6 +1276,6 @@ fn message_dialog(ctx: &egui::Context, app: &mut NaviDogApp) {
 
 /// Saves the interface preferences (language and theme).
 fn save_prefs(dark: bool) {
-    let prefs = navidog_core::i18n::Prefs { lang: navidog_core::i18n::lang(), dark };
+    let prefs = navidog_core::i18n::Prefs { lang: navidog_core::i18n::lang(), dark, ..navidog_core::i18n::load_prefs() };
     let _ = navidog_core::i18n::save_prefs(&prefs);
 }

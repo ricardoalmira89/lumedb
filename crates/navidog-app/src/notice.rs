@@ -147,17 +147,22 @@ pub fn show_notice(ctx: &egui::Context, n: &mut Notice) -> bool {
 /// Modal question with OK / Cancel. Returns `Some(answer)` once the user picks one. Escape
 /// cancels; Enter does nothing, so a stray key press never confirms something destructive.
 pub fn show_confirm(ctx: &egui::Context, text: &str) -> Option<bool> {
+    show_confirm_with(ctx, tr("Confirm"), text, tr("OK"))
+}
+
+/// Like [`show_confirm`] with its own title and confirm button text (e.g. "Delete 3 Records").
+pub fn show_confirm_with(ctx: &egui::Context, title: &str, text: &str, ok: &str) -> Option<bool> {
     let mut answer = ctx.input(|i| i.key_pressed(egui::Key::Escape)).then_some(false);
     modal_card(
         ctx,
         "navidog_confirm",
         Level::Warning,
-        tr("Confirm"),
+        title,
         |ui| {
             ui.add(egui::Label::new(text).wrap());
         },
         |ui| {
-            if ui.add(egui::Button::new(RichText::new(tr("OK")).strong()).min_size(egui::vec2(72.0, 0.0))).clicked() {
+            if ui.add(egui::Button::new(RichText::new(ok).strong()).min_size(egui::vec2(72.0, 0.0))).clicked() {
                 answer = Some(true);
             }
             if ui.add(egui::Button::new(tr("Cancel")).min_size(egui::vec2(72.0, 0.0))).clicked() {

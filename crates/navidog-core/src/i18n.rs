@@ -83,11 +83,19 @@ macro_rules! trf {
 // ---------------------------------------------------------------- Preferences
 
 /// Interface preferences kept between sessions (`~/.config/navidog/prefs.json`).
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Prefs {
     pub lang: Lang,
     pub dark: bool,
+    /// Records per page when browsing a table (Navicat's default is 50).
+    pub page_size: usize,
+}
+
+impl Default for Prefs {
+    fn default() -> Self {
+        Self { lang: Lang::default(), dark: false, page_size: 50 }
+    }
 }
 
 pub fn load_prefs() -> Prefs {

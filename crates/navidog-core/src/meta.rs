@@ -427,6 +427,28 @@ pub fn indexes(d: &mut dyn Driver, schema: &str, table: &str) -> Result<Vec<Inde
     }
 }
 
+/// CHECK constraints of a table as (name, expression). SQLite keeps them only inside the
+/// `CREATE TABLE` text, so it returns none; MySQL before 8.0.16 has no such catalog.
+pub fn check_constraints(d: &mut dyn Driver, schema: &str, table: &str) -> Result<Vec<(String, String)>> {
+    let kind = d.kind();
+    let (sch, tab) = (kind.quote_literal(schema), kind.quote_literal(table));
+    let sql = match kind {
+        DbKind::Sqlite => return Ok(Vec::new()),
+        DbKind::Postgres => format!(
+            "SELECT c.conname, pg_get_constraintdef(c.oid) FROM pg_constraint c \
+             JOIN pg_class t ON t.oid = c.conrelid JOIN pg_namespace n ON n.oid = t.relnamespace \
+             WHERE c.contype = 'c' AND n.nspname = {sch} AND t.relname = {tab} ORDER BY 1"
+        ),
+        DbKind::Mysql => format!(
+            "SELECT cc.CONSTRAINT_NAME, cc.CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS cc \
+             JOIN information_schema.TABLE_CONSTRAINTS tc ON tc.CONSTRAINT_SCHEMA = cc.CONSTRAINT_SCHEMA \
+             AND tc.CONSTRAINT_NAME = cc.CONSTRAINT_NAME AND tc.CONSTRAINT_TYPE = 'CHECK' \
+             WHERE tc.TABLE_SCHEMA = {sch} AND tc.TABLE_NAME = {tab} ORDER BY 1"
+        ),
+    };
+    Ok(query(d, &sql)?.iter().map(|r| (s(r, 0), s(r, 1))).collect())
+}
+
 pub fn foreign_keys(d: &mut dyn Driver, schema: &str, table: &str) -> Result<Vec<ForeignKeyDef>> {
     let kind = d.kind();
     let split = |v: String| v.split(',').map(|c| c.trim().to_string()).filter(|c| !c.is_empty()).collect::<Vec<_>>();

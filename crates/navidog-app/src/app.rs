@@ -95,6 +95,8 @@ pub struct Session {
     pub schemas: HashMap<String, Vec<String>>,
     pub objects: HashMap<(String, String), Vec<DbObject>>,
     pub stats: HashMap<(String, String), Vec<TableStats>>,
+    /// Structure of the tables expanded in the navigation tree, by (database, schema, table).
+    pub tables: HashMap<(String, String, String), TableTree>,
     pub version: String,
     /// The password was already asked for in this session (connections that do not save it).
     pub unlocked: bool,
@@ -138,6 +140,10 @@ impl Session {
         self.conns.get(&self.db_key(db)).map_or(Status::Disconnected, |c| c.status)
     }
 
+    pub fn table_tree(&self, loc: &Loc, table: &str) -> Option<&TableTree> {
+        self.tables.get(&(self.db_key(&loc.db), loc.schema.clone(), table.to_string()))
+    }
+
     pub fn objects_at(&self, loc: &Loc) -> Option<&Vec<DbObject>> {
         self.objects.get(&(self.db_key(&loc.db), loc.schema.clone()))
     }
@@ -162,9 +168,20 @@ impl Session {
     }
 }
 
+/// What the navigation tree shows under an expanded table.
+#[derive(Debug, Clone, Default)]
+pub struct TableTree {
+    /// (name, type, primary key)
+    pub fields: Vec<(String, String, bool)>,
+    pub indexes: Vec<String>,
+    pub foreign_keys: Vec<String>,
+    pub checks: Vec<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum NavReq {
     Databases(ConnKey),
+    TableTree(Loc, String),
     Schemas(ConnKey, String),
     Objects(Loc),
     Stats(Loc),
@@ -195,6 +212,8 @@ pub enum Action {
     OpenDatabase(ConnKey, String),
     CloseDatabase(ConnKey, String),
     LoadObjects(Loc),
+    /// Reads the fields, indexes, keys and checks of a table expanded in the tree.
+    LoadTableTree(Loc, String),
     RefreshConn(ConnKey),
     RefreshLoc(Loc),
     NewConnection(DbKind),
@@ -347,6 +366,7 @@ impl NaviDogApp {
             schemas: HashMap::new(),
             objects: HashMap::new(),
             stats: HashMap::new(),
+            tables: HashMap::new(),
             version: String::new(),
             unlocked: false,
         });
@@ -449,6 +469,7 @@ impl NaviDogApp {
             s.schemas.clear();
             s.objects.clear();
             s.stats.clear();
+            s.tables.clear();
         }
         self.pending.retain(|_, o| !matches!(o, Owner::Nav(_)));
     }
@@ -591,6 +612,15 @@ impl NaviDogApp {
                 }
                 Err(e) => self.error(&trf!("Error reading \"{schema}\"", schema = loc.schema), e),
             },
+            NavReq::TableTree(loc, table) => match take::<TableTree>(result) {
+                Ok(t) => {
+                    if let Some(s) = self.session_mut(loc.conn) {
+                        let k = (s.db_key(&loc.db), loc.schema.clone(), table);
+                        s.tables.insert(k, t);
+                    }
+                }
+                Err(e) => self.error(&trf!("Error reading \"{table}\"", table = table), e),
+            },
             NavReq::Stats(loc) => {
                 if let (Ok(v), Some(s)) = (take::<Vec<TableStats>>(result), self.session_mut(loc.conn)) {
                     let k = (s.db_key(&loc.db), loc.schema.clone());
@@ -695,6 +725,19 @@ impl NaviDogApp {
                     s.objects.retain(|(d, _), _| *d != dbk);
                 }
             }
+            Action::LoadTableTree(loc, table) => {
+                let (schema, t) = (loc.schema.clone(), table.clone());
+                self.run_nav(loc.clone(), NavReq::TableTree(loc, table), ctx, move |d, _| {
+                    let design = meta::table_design(d, &schema, &t)?;
+                    let checks = meta::check_constraints(d, &schema, &t).unwrap_or_default();
+                    Ok(TableTree {
+                        fields: design.columns.iter().map(|c| (c.name.clone(), c.data_type.clone(), c.primary_key)).collect(),
+                        indexes: design.indexes.iter().map(|i| i.name.clone()).collect(),
+                        foreign_keys: design.foreign_keys.iter().map(|f| f.name.clone()).collect(),
+                        checks: checks.into_iter().map(|(n, _)| n).collect(),
+                    })
+                });
+            }
             Action::LoadObjects(loc) => {
                 let loaded = self.session(loc.conn).is_some_and(|s| s.objects_at(&loc).is_some());
                 if !loaded {
@@ -706,6 +749,7 @@ impl NaviDogApp {
                     s.schemas.clear();
                     s.objects.clear();
                     s.stats.clear();
+            s.tables.clear();
                     let dbs: Vec<String> = s.conns.keys().cloned().collect();
                     for db in dbs {
                         self.on_connected(key, &db, ctx);
@@ -714,6 +758,10 @@ impl NaviDogApp {
             }
             Action::RefreshLoc(loc) => {
                 self.info.retain(|(l, _), _| *l != loc);
+                if let Some(s) = self.session_mut(loc.conn) {
+                    let db = s.db_key(&loc.db);
+                    s.tables.retain(|(d, sc, _), _| !(*d == db && *sc == loc.schema));
+                }
                 self.load_objects(loc, ctx);
             }
             Action::NewConnection(kind) => {
