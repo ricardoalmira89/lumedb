@@ -100,6 +100,12 @@ jobs:
           key: ${{ matrix.target }}
       - name: Build
         run: cargo build --release --locked -p lumedb-app --target ${{ matrix.target }}
+      - name: Check that it only links system libraries
+        run: |
+          otool -L "target/${{ matrix.target }}/release/lumedb"
+          if otool -L "target/${{ matrix.target }}/release/lumedb" | grep -E "/opt/homebrew|/usr/local/"; then
+            echo "::error::the binary depends on libraries that users will not have"; exit 1
+          fi
       - name: Package
         run: |
           set -euo pipefail
