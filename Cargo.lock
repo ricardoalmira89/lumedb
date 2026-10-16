@@ -2495,6 +2495,52 @@ dependencies = [
 ]
 
 [[package]]
+name = "lumedb-app"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "eframe",
+ "egui-phosphor",
+ "egui_extras",
+ "egui_plot",
+ "lumedb-core",
+ "rand 0.8.8",
+ "rfd",
+ "serde_json",
+]
+
+[[package]]
+name = "lumedb-core"
+version = "0.1.0"
+dependencies = [
+ "aes",
+ "anyhow",
+ "blowfish",
+ "calamine",
+ "cbc",
+ "chrono",
+ "csv",
+ "directories",
+ "flate2",
+ "hex",
+ "keyring",
+ "mysql",
+ "native-tls",
+ "postgres",
+ "postgres-native-tls",
+ "roxmltree",
+ "rusqlite",
+ "rust_xlsxwriter",
+ "serde",
+ "serde_json",
+ "sha1",
+ "sqlformat",
+ "ssh2",
+ "ureq",
+]
+
+[[package]]
 name = "malloc_buf"
 version = "0.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2726,52 +2772,6 @@ dependencies = [
  "security-framework 3.7.0",
  "security-framework-sys",
  "tempfile",
-]
-
-[[package]]
-name = "navidog-app"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono",
- "eframe",
- "egui-phosphor",
- "egui_extras",
- "egui_plot",
- "navidog-core",
- "rand 0.8.8",
- "rfd",
- "serde_json",
-]
-
-[[package]]
-name = "navidog-core"
-version = "0.1.0"
-dependencies = [
- "aes",
- "anyhow",
- "blowfish",
- "calamine",
- "cbc",
- "chrono",
- "csv",
- "directories",
- "flate2",
- "hex",
- "keyring",
- "mysql",
- "native-tls",
- "postgres",
- "postgres-native-tls",
- "roxmltree",
- "rusqlite",
- "rust_xlsxwriter",
- "serde",
- "serde_json",
- "sha1",
- "sqlformat",
- "ssh2",
- "ureq",
 ]
 
 [[package]]

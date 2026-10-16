@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=LumeDB
+GenericName=Database Client
+GenericName[es]=Cliente de bases de datos
+Comment=Manage MySQL, PostgreSQL and SQLite databases
+Comment[es]=Administra bases de datos MySQL, PostgreSQL y SQLite
+Exec=lumedb
+Icon=lumedb
+Terminal=false
+Categories=Development;Database;
+Keywords=sql;mysql;postgres;postgresql;sqlite;database;
+StartupWMClass=lumedb

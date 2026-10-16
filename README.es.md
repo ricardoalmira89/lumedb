@@ -1,4 +1,4 @@
-# NaviDog
+# LumeDB
 
 [English](README.md) · **Español**
 
@@ -7,7 +7,7 @@ Motores: **PostgreSQL**, **MySQL / MariaDB** y **SQLite**.
 
 ## Reglas de sala limpia (obligatorias)
 
-NaviDog es una implementación independiente. Para que siga siéndolo:
+LumeDB es una implementación independiente. Para que siga siéndolo:
 
 1. **No se descompila ni se desensambla Navicat**, ni se copia su código, sus recursos (iconos, textos, traducciones) ni su marca.
 2. Sí se permite **usar Navicat con normalidad y observar su comportamiento** (Directiva 2009/24/CE, art. 5.3) y reimplementar funcionalidades, que no están protegidas por derechos de autor (TJUE C-406/10, *SAS Institute*).
@@ -53,7 +53,7 @@ NaviDog es una implementación independiente. Para que siga siéndolo:
 
 - Motores que faltan: SQL Server, Oracle, MongoDB, Redis y otros.
 - El modelo ER es inverso (diagrama de la base existente + exportar SQL); no es un diseñador lógico/físico completo.
-- La automatización se ejecuta mientras NaviDog está abierto o desde cron (`navidog --run-job "nombre"`); no envía correos.
+- La automatización se ejecuta mientras LumeDB está abierto o desde cron (`lumedb --run-job "nombre"`); no envía correos.
 - Sin depurador de funciones, informes, ni sincronización en la nube.
 
 ## Contraseñas
@@ -61,8 +61,8 @@ NaviDog es una implementación independiente. Para que siga siéndolo:
 Las contraseñas de las conexiones, los secretos SSH y las claves de API de IA se guardan en el llavero
 del sistema (Llavero de GNOME / KWallet mediante Secret Service en Linux, Keychain en macOS,
 Administrador de credenciales en Windows), nunca en los archivos de configuración. Cada conexión tiene
-la opción «Guardar contraseña»; si está desactivada, NaviDog la pide al conectar. Sin llavero (o con
-`NAVIDOG_NO_KEYRING=1`) los secretos guardados quedan en los archivos, que se crean legibles solo por tu
+la opción «Guardar contraseña»; si está desactivada, LumeDB la pide al conectar. Sin llavero (o con
+`LUMEDB_NO_KEYRING=1`) los secretos guardados quedan en los archivos, que se crean legibles solo por tu
 usuario (0600). Para compilar en Linux hace falta `libdbus-1-dev` (Debian/Ubuntu) o `dbus-devel` (Fedora).
 
 ## Uso
@@ -70,25 +70,25 @@ usuario (0600). Para compilar en Linux hace falta `libdbus-1-dev` (Debian/Ubuntu
 ```sh
 cargo run --release
 cargo test                        # SQLite
-NAVIDOG_TEST_LIVE=1 cargo test    # además PostgreSQL (puerto 55432) y MySQL (33306), contraseña «navidog»
-NAVIDOG_TEST_KEYRING=1 cargo test # además el llavero del sistema (requiere un llavero desbloqueado)
+LUMEDB_TEST_LIVE=1 cargo test    # además PostgreSQL (puerto 55432) y MySQL (33306), contraseña «lumedb»
+LUMEDB_TEST_KEYRING=1 cargo test # además el llavero del sistema (requiere un llavero desbloqueado)
 ```
 
 Contenedores para las pruebas en vivo:
 
 ```sh
-docker run -d --name navidog-test-pg -e POSTGRES_PASSWORD=navidog -p 127.0.0.1:55432:5432 postgres:16-alpine
-docker run -d --name navidog-test-mysql -e MYSQL_ROOT_PASSWORD=navidog -p 127.0.0.1:33306:3306 mysql:latest
+docker run -d --name lumedb-test-pg -e POSTGRES_PASSWORD=lumedb -p 127.0.0.1:55432:5432 postgres:16-alpine
+docker run -d --name lumedb-test-mysql -e MYSQL_ROOT_PASSWORD=lumedb -p 127.0.0.1:33306:3306 mysql:latest
 ```
 
 ## Traducciones
 
 El inglés es el idioma base: todos los textos de la interfaz se escriben en inglés dentro de `tr("…")`
-(o `trf!("… {name} …", name = valor)`). Las traducciones están en `crates/navidog-core/i18n/<idioma>.json`,
+(o `trf!("… {name} …", name = valor)`). Las traducciones están en `crates/lumedb-core/i18n/<idioma>.json`,
 un mapa del texto en inglés al texto traducido; si falta una entrada se muestra el inglés.
-Para añadir un idioma, crea su catálogo y añade una variante a `Lang` en `crates/navidog-core/src/i18n.rs`.
+Para añadir un idioma, crea su catálogo y añade una variante a `Lang` en `crates/lumedb-core/src/i18n.rs`.
 
 ## Estructura
 
-- `crates/navidog-core`: conexiones (SSL/SSH), drivers, metadatos, DDL, edición, SQL, exportación/importación, volcado, sincronización, administración y automatización.
-- `crates/navidog-app`: interfaz (egui). `app.rs` reparte las tareas a un hilo por conexión; cada pestaña o ventana es una `View` en `views/`.
+- `crates/lumedb-core`: conexiones (SSL/SSH), drivers, metadatos, DDL, edición, SQL, exportación/importación, volcado, sincronización, administración y automatización.
+- `crates/lumedb-app`: interfaz (egui). `app.rs` reparte las tareas a un hilo por conexión; cada pestaña o ventana es una `View` en `views/`.

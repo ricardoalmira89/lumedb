@@ -1,4 +1,4 @@
-# NaviDog
+# LumeDB
 
 **English** · [Español](README.es.md)
 
@@ -7,7 +7,7 @@ Engines: **PostgreSQL**, **MySQL / MariaDB** and **SQLite**.
 
 ## Clean-room rules (mandatory)
 
-NaviDog is an independent implementation. To keep it that way:
+LumeDB is an independent implementation. To keep it that way:
 
 1. **Navicat is never decompiled or disassembled**, and none of its code, resources (icons, texts, translations) or brand are copied.
 2. **Using Navicat normally and observing its behaviour** is allowed (Directive 2009/24/EC, art. 5.3), as is reimplementing features, which are not protected by copyright (CJEU C-406/10, *SAS Institute*).
@@ -53,15 +53,15 @@ NaviDog is an independent implementation. To keep it that way:
 
 - Missing engines: SQL Server, Oracle, MongoDB, Redis and others.
 - The ER model is reverse-engineered (diagram of the existing database + SQL export); it is not a full logical/physical designer.
-- Automation runs while NaviDog is open or from cron (`navidog --run-job "name"`); it does not send email.
+- Automation runs while LumeDB is open or from cron (`lumedb --run-job "name"`); it does not send email.
 - No function debugger, reports or cloud sync.
 
 ## Passwords
 
 Connection passwords, SSH secrets and AI API keys are stored in the system keyring (GNOME Keyring /
 KWallet via Secret Service on Linux, Keychain on macOS, Credential Manager on Windows), never in the
-configuration files. Each connection has a "Save password" option; when it is off, NaviDog asks for
-the password when connecting. Without a keyring (or with `NAVIDOG_NO_KEYRING=1`) saved secrets stay
+configuration files. Each connection has a "Save password" option; when it is off, LumeDB asks for
+the password when connecting. Without a keyring (or with `LUMEDB_NO_KEYRING=1`) saved secrets stay
 in the files, which are created readable only by your user (0600). Building on Linux needs
 `libdbus-1-dev` (Debian/Ubuntu) or `dbus-devel` (Fedora).
 
@@ -70,25 +70,25 @@ in the files, which are created readable only by your user (0600). Building on L
 ```sh
 cargo run --release
 cargo test                        # SQLite
-NAVIDOG_TEST_LIVE=1 cargo test    # also PostgreSQL (port 55432) and MySQL (33306), password "navidog"
-NAVIDOG_TEST_KEYRING=1 cargo test # also the system keyring (needs an unlocked keyring)
+LUMEDB_TEST_LIVE=1 cargo test    # also PostgreSQL (port 55432) and MySQL (33306), password "lumedb"
+LUMEDB_TEST_KEYRING=1 cargo test # also the system keyring (needs an unlocked keyring)
 ```
 
 Containers for the live tests:
 
 ```sh
-docker run -d --name navidog-test-pg -e POSTGRES_PASSWORD=navidog -p 127.0.0.1:55432:5432 postgres:16-alpine
-docker run -d --name navidog-test-mysql -e MYSQL_ROOT_PASSWORD=navidog -p 127.0.0.1:33306:3306 mysql:latest
+docker run -d --name lumedb-test-pg -e POSTGRES_PASSWORD=lumedb -p 127.0.0.1:55432:5432 postgres:16-alpine
+docker run -d --name lumedb-test-mysql -e MYSQL_ROOT_PASSWORD=lumedb -p 127.0.0.1:33306:3306 mysql:latest
 ```
 
 ## Translations
 
 English is the source language: every interface string is written in English and wrapped in `tr("…")`
-(or `trf!("… {name} …", name = value)`). Translations live in `crates/navidog-core/i18n/<lang>.json`,
+(or `trf!("… {name} …", name = value)`). Translations live in `crates/lumedb-core/i18n/<lang>.json`,
 a map from the English text to the translated text; missing entries fall back to English.
-To add a language, add a catalog and a variant to `Lang` in `crates/navidog-core/src/i18n.rs`.
+To add a language, add a catalog and a variant to `Lang` in `crates/lumedb-core/src/i18n.rs`.
 
 ## Layout
 
-- `crates/navidog-core`: connections (SSL/SSH), drivers, metadata, DDL, editing, SQL, export/import, dump, synchronization, administration, automation and translations.
-- `crates/navidog-app`: user interface (egui). `app.rs` dispatches tasks to one thread per connection; every tab or window is a `View` in `views/`.
+- `crates/lumedb-core`: connections (SSL/SSH), drivers, metadata, DDL, editing, SQL, export/import, dump, synchronization, administration, automation and translations.
+- `crates/lumedb-app`: user interface (egui). `app.rs` dispatches tasks to one thread per connection; every tab or window is a `View` in `views/`.
