@@ -102,6 +102,9 @@ pub struct SslConfig {
     pub ca_path: String,
     /// Verify the server certificate.
     pub verify: bool,
+    /// MySQL only: send the password unhashed (inside SSL), as AWS RDS IAM authentication needs
+    /// for its temporary tokens (`mysql_clear_password`).
+    pub cleartext: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

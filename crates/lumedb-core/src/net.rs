@@ -87,7 +87,8 @@ fn connect_mysql(cfg: &ConnectionConfig, host: &str, port: u16) -> Result<MysqlD
         if !cfg.ssl.ca_path.is_empty() {
             ssl = ssl.with_root_cert_path(Some(std::path::PathBuf::from(&cfg.ssl.ca_path)));
         }
-        opts = opts.ssl_opts(Some(ssl));
+        // The password only travels unhashed inside the SSL connection.
+        opts = opts.ssl_opts(Some(ssl)).enable_cleartext_plugin(cfg.ssl.cleartext);
     }
     let opts: mysql::Opts = opts.into();
     let conn = mysql::Conn::new(opts.clone())?;
