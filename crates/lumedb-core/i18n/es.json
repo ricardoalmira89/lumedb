@@ -678,6 +678,8 @@
   "Values": "Valores",
   "Variables": "Variables",
   "Verify server certificate": "Verificar el certificado del servidor",
+  "Allow cleartext password (AWS RDS IAM)": "Permitir contraseña en texto claro (AWS RDS IAM)",
+  "Sends the password unhashed inside the SSL connection. Needed to sign in with AWS RDS IAM authentication tokens.": "Envía la contraseña sin cifrar dentro de la conexión SSL. Hace falta para entrar con los tokens de autenticación IAM de AWS RDS.",
   "View": "Vista",
   "View SQL": "Ver SQL",
   "Views": "Vistas",

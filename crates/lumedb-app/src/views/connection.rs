@@ -149,6 +149,13 @@ impl View for ConnectionDialog {
                         ui.label("");
                         ui.checkbox(&mut c.ssl.verify, tr("Verify server certificate"));
                         ui.end_row();
+                        if c.kind == DbKind::Mysql {
+                            ui.label("");
+                            ui.checkbox(&mut c.ssl.cleartext, tr("Allow cleartext password (AWS RDS IAM)")).on_hover_text(tr(
+                                "Sends the password unhashed inside the SSL connection. Needed to sign in with AWS RDS IAM authentication tokens.",
+                            ));
+                            ui.end_row();
+                        }
                     });
                 });
             }

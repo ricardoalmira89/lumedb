@@ -55,6 +55,7 @@ with a familiar workflow, an ER diagram that actually reads well, and SQL writte
 
 - PostgreSQL, MySQL / MariaDB and SQLite.
 - SSL (custom CA, optional verification) and SSH tunnels (password or private key).
+- MySQL sign-in with AWS RDS IAM authentication tokens (cleartext password inside SSL).
 - Groups (folders) and colours; duplicate, edit and test connections.
 - Passwords in the system keyring, with an optional "ask every time" mode.
 - Import connections from Navicat `.ncx` files, including passwords and SSH settings.
